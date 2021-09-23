@@ -72,9 +72,9 @@ void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol) {
   }
 }
 
-void drawWeather(uint8_t symbol, int degree, int degreeHigh) {
-  drawWeatherSymbol(0, 48, symbol);
-  
+void drawWeather(uint8_t symbol, int degree, int degreeHigh, int x) {
+  drawWeatherSymbol(x, 48, symbol);
+
   int offset = 0;
   if (degreeHigh == 0) {
     u8g2.setFont(u8g2_font_logisoso32_tf);
@@ -82,7 +82,7 @@ void drawWeather(uint8_t symbol, int degree, int degreeHigh) {
   } else {
     u8g2.setFont(u8g2_font_logisoso16_tf);
   }
-  u8g2.setCursor(48+3, 32 + offset);
+  u8g2.setCursor(48 + 3 + x, 32 + offset);
   u8g2.print(degree);
   if (degreeHigh != 0) {
     u8g2.print("~");
@@ -91,13 +91,13 @@ void drawWeather(uint8_t symbol, int degree, int degreeHigh) {
   u8g2.print("°C");
 }
 
-void draw(const char *s, int degree, int degreeHigh){
+void draw(const char *s, int degree, int degreeHigh, int x){
   int16_t len = strlen(s);
   u8g2.firstPage();
   do {
-    drawWeather(symbol, degree, degreeHigh);
+    drawWeather(symbol, degree, degreeHigh, x);
     u8g2.setFont(u8g2_font_wqy12_t_gb2312);
-    u8g2.drawUTF8((60 - 2*len), 62, s);
+    u8g2.drawUTF8((60 - 2*len) + x, 62, s);
   } while ( u8g2.nextPage() );
 }
 
@@ -267,13 +267,14 @@ void closeWiFi() {
   Serial.println("closing wifi");
 }
 
-void drawLocalTime() {
+void drawLocalTime(int x) {
   initLocalTime();
   u8g2.firstPage();
   do {
-    u8g2.setFont(u8g2_font_ncenB14_tr);
-    u8g2.drawStr(10, 25, localDate);
-    u8g2.drawStr(10, 45, localTime);
+    u8g2.setFont(u8g2_font_crox3h_tr);
+    u8g2.drawStr(20 + x, 20, localDate);
+    u8g2.setFont(u8g2_font_lubB14_tr);
+    u8g2.drawStr(20 + x, 47, localTime);
     u8g2.drawFrame(0, 0, 128, 64);
   } while (u8g2.nextPage());
 }
@@ -311,17 +312,34 @@ void setup() {
   u8g2.enableUTF8Print();
 }
 
-int f = 0;
+int frame = 0;
+int dr = 0;
+int dr_t = 0;
 void loop() {
   delay(1000);
   
-  if (f++ <= 10) {
-    drawLocalTime();
+  if (frame++ <= 10) {
+    if (dr_t == 0) {
+      for(int x = 80; x >= 0; x-=5) {
+        drawLocalTime(x);
+      }
+      dr_t = 1;
+    } else {
+      drawLocalTime(0);
+    }
+  
+    dr = 0;
   } else {
-    draw(wea.c_str(), atoi(low.c_str()), atoi(high.c_str()));
+    if (dr == 0) {
+      for(int x = 80; x > 0; x-=5) {
+        draw(wea.c_str(), atoi(low.c_str()), atoi(high.c_str()), x);
+      }
+      dr = 1;
+    }
   }
-  if (f % 13 == 0) {
-    f = 0;
+  if (frame % 14 == 0) {
+    frame = 0;
+    dr_t = 0;
   }
 
   // 每小时更新天气

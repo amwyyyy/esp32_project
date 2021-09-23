@@ -63,29 +63,26 @@ void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol)
   }
 }
 
-void drawWeather(uint8_t symbol, int degree, int degreeHigh)
+void drawWeather(uint8_t symbol, int degree, int degreeHigh, int x)
 {
-  drawWeatherSymbol(0, 48, symbol);
+  drawWeatherSymbol(x, 48, symbol);
   u8g2.setFont(u8g2_font_logisoso16_tf);
-  u8g2.setCursor(48+3, 32);
+  u8g2.setCursor(48 + 3 + x, 32);
   u8g2.print(degree);
   u8g2.print("~");
   u8g2.print(degreeHigh);
   u8g2.print("°C");
 }
 
-void draw(const char *s, uint8_t symbol, int degree, int degreeHigh)
+void draw(const char *s, uint8_t symbol, int degree, int degreeHigh, int x)
 {
   int16_t len = strlen(s);
-  for(;;)
-  {
-    u8g2.firstPage();
-    do {
-      drawWeather(symbol, degree, degreeHigh);
-      u8g2.setFont(u8g2_font_wqy12_t_gb2312);
-      u8g2.drawUTF8((60 - 2*len), 62, s);
-    } while ( u8g2.nextPage() );
-  }
+  u8g2.firstPage();
+  do {
+    drawWeather(symbol, degree, degreeHigh, x);
+    u8g2.setFont(u8g2_font_wqy12_t_gb2312);
+    u8g2.drawUTF8((60 - 2*len) + x, 62, s);
+  } while ( u8g2.nextPage() );
 }
 
 void connectWiFi() {
@@ -195,6 +192,9 @@ void setup() {
 
 void loop() {
   uint8_t symbol = getSymbol(wea);
-  draw(wea.c_str(), symbol, atoi(low.c_str()), atoi(high.c_str()));
-  delay(10000);
+  for(int x=0; x<30; x++) {
+    draw(wea.c_str(), symbol, atoi(low.c_str()), atoi(high.c_str()), x);
+    delay(10);
+  }
+  delay(1000);
 }
