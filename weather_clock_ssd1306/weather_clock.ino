@@ -16,7 +16,8 @@
 #define RAIN 3
 #define THUNDER 4
 
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);     
+U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+//U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/ U8X8_PIN_NONE);         
 
 const char* ssid       = "xiongda";
 const char* password   = "15999554794";
@@ -74,20 +75,11 @@ void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol) {
 
 void drawWeather(uint8_t symbol, int degree, int degreeHigh) {
   drawWeatherSymbol(0, 48, symbol);
-  
-  int offset = 0;
-  if (degreeHigh == 0) {
-    u8g2.setFont(u8g2_font_logisoso32_tf);
-    offset = 10;
-  } else {
-    u8g2.setFont(u8g2_font_logisoso16_tf);
-  }
-  u8g2.setCursor(48+3, 32 + offset);
+  u8g2.setFont(u8g2_font_logisoso16_tf);
+  u8g2.setCursor(48+3, 32);
   u8g2.print(degree);
-  if (degreeHigh != 0) {
-    u8g2.print("~");
-    u8g2.print(degreeHigh);
-  }
+  u8g2.print("~");
+  u8g2.print(degreeHigh);
   u8g2.print("°C");
 }
 
