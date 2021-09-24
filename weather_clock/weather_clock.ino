@@ -185,58 +185,13 @@ int initLocalTime(){
     Serial.println("Failed to obtain time");
     return 0;
   }
-  char year[10];
-  itoa(timeinfo.tm_year + 1900, year, 10);
-  char month[10];
-  itoa(timeinfo.tm_mon + 1, month, 10);
-  char day[10];
-  itoa(timeinfo.tm_mday, day, 10);
 
-  if(strlen(month) == 1) {
-    char zero[10] = "0";
-    strcat(zero, month);
-    strcpy(month, zero);
-  }
-  if (strlen(day) == 1) {
-    char zero[10] = "0";
-    strcat(zero, day);
-    strcpy(day, zero);  
-  }
-  Serial.print(strcat(year, "-"));
-  Serial.print(strcat(month, "-"));
-  Serial.print(day);
-  Serial.println("");
-
-  char *ld = (char *) malloc(strlen(year) + strlen(month) + strlen(day));
-  sprintf(ld, "%s%s%s", year, month, day);
+  char *ld = (char *) malloc(10);
+  sprintf(ld, "%d-%02d-%02d", (timeinfo.tm_year + 1900), (timeinfo.tm_mon + 1), timeinfo.tm_mday);
   localDate = ld;
 
-  char hour[10];
-  itoa(timeinfo.tm_hour, hour, 10);
-  char min[5];
-  itoa(timeinfo.tm_min, min, 10);
-  char second[5];
-  itoa(timeinfo.tm_sec, second, 10);
-  minute = timeinfo.tm_min;
-
-  if (strlen(hour) == 1) {
-    char zero[10] = "0";
-    strcat(zero, hour);
-    strcpy(hour, zero); 
-  }
-  if (strlen(min) == 1) {
-    char zero[10] = "0";
-    strcat(zero, min);
-    strcpy(min, zero);  
-  }
-  if (strlen(second) == 1) {
-    char zero[10] = "0";
-    strcat(zero, second);
-    strcpy(second, zero);  
-  }
-
-  char *lt = (char *) malloc(strlen(hour) + strlen(min) + strlen(second) + 2);
-  sprintf(lt, "%s:%s:%s", hour, min, second);
+  char *lt = (char *) malloc(8);
+  sprintf(lt, "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
   localTime = lt;
 
   return 1;
@@ -294,6 +249,9 @@ void updteWeather() {
 
 void setup() {
   Serial.begin(115200);
+
+  u8g2.begin();
+  u8g2.enableUTF8Print();
   
   int t = 0;
   do {
@@ -307,9 +265,6 @@ void setup() {
   getWeather();
 
   closeWiFi();
-
-  u8g2.begin();
-  u8g2.enableUTF8Print();
 }
 
 int frame = 0;
