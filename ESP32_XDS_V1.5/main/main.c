@@ -386,29 +386,35 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,int32_t ev
 void task2_cb(void)
 {
     static uint8_t i=0;
-	if(i==0){i=1;lv_img_set_src(img4, &dl_0);}
-	else if(i==1){i=2;lv_img_set_src(img4, &dl_1);}
-	else if(i==2){i=3;lv_img_set_src(img4, &dl_2);}
-	else if(i==3){i=0;lv_img_set_src(img4, &dl_3);}
+	if(i==0){
+		i=1;
+		lv_img_set_src(img4, &dl_0);
+	} else if(i==1){
+		i=2;lv_img_set_src(img4, &dl_1);
+	} else if(i==2){
+		i=3;
+		lv_img_set_src(img4, &dl_2);
+	} else if(i==3){
+		i=0;
+		lv_img_set_src(img4, &dl_3);
+	}
 }
 
 //LVGL任务三 
 void task3_cb(void)
 {
-   static uint8_t page_id = 0,page_id1 = 0;
-   page_id++;
+	static uint8_t page_id = 0,page_id1 = 0;
+	page_id++;
 
-   if(page_id==4)
-   {
-	  page_id = 0;
-      page_id1++;
-   }
-    if(page_id1==4)
-   {
-	  page_id1 = 0;
-   }
-   lv_tabview_set_tab_act(tabview,page_id,LV_ANIM_ON);//带有切换动画效果
-   lv_tabview_set_tab_act(bjtuyq,page_id1,LV_ANIM_ON);//带有切换动画效果
+	if(page_id==4) {
+		page_id = 0;
+		page_id1++;
+	}
+	if(page_id1==4) {
+		page_id1 = 0;
+	}
+	lv_tabview_set_tab_act(tabview,page_id,LV_ANIM_ON);//带有切换动画效果
+	lv_tabview_set_tab_act(bjtuyq,page_id1,LV_ANIM_ON);//带有切换动画效果
 }
 
 //表盘显示任务
@@ -925,7 +931,6 @@ static void get_lunar_task(void * pvParameters)
 	static char rwbz =1; 
 
     while(1) {
-
         int err = getaddrinfo(WEB_SERVER, "80", &hints, &res); 
 
         if(err != 0 || res == NULL) {  //如果返回参数不等于0  或者  指针地址为空
@@ -967,33 +972,33 @@ static void get_lunar_task(void * pvParameters)
 
         ESP_LOGI(TAG, "... socket send success");  
 
-            //城市--汉字
-            char *substr="/></div>"; //查找第一处字符串  遇到"时前面加\; 
-            char *substr1="/></div>";//字符串的左部分
-			char *substr2="天气";   //字符串的右部分
+		//城市--汉字
+		char *substr="/></div>"; //查找第一处字符串  遇到"时前面加\; 
+		char *substr1="/></div>";//字符串的左部分
+		char *substr2="天气";   //字符串的右部分
 
-			//城市拼音信息
-			char *substr12="href=\"http://"; //查找第一处字符串  遇到"时前面加\; 
-            char *substr13="href=\"http://";//字符串的左部分
-			char *substr14=".tianqi.com/?tq\"";   //字符串的右部分
+		//城市拼音信息
+		char *substr12="href=\"http://"; //查找第一处字符串  遇到"时前面加\; 
+		char *substr13="href=\"http://";//字符串的左部分
+		char *substr14=".tianqi.com/?tq\"";   //字符串的右部分
 
-			//公历-年月日
-            char *substr3="wtwind\">"; //查找第一处字符串  遇到"时前面加\; 
-            char *substr4="wtwind\">";//字符串的左部分
-			char *substr5="星期";   //字符串的右部分
+		//公历-年月日
+		char *substr3="wtwind\">"; //查找第一处字符串  遇到"时前面加\; 
+		char *substr4="wtwind\">";//字符串的左部分
+		char *substr5="星期";   //字符串的右部分
 
-			//星期信息
-			char *substr6="日  "; //查找第一处字符串  遇到"时前面加\; 
-            char *substr7="日  ";//字符串的左部分
-			char *substr8=" <br>";   //字符串的右部分
+		//星期信息
+		char *substr6="日  "; //查找第一处字符串  遇到"时前面加\; 
+		char *substr7="日  ";//字符串的左部分
+		char *substr8=" <br>";   //字符串的右部分
 
-            //农历信息
-			char *substr9=" <br>"; //查找第一处字符串  遇到"时前面加\; 
-            char *substr10=" <br>";//字符串的左部分
-			char *substr11="</div>";   //字符串的右部分
+		//农历信息
+		char *substr9=" <br>"; //查找第一处字符串  遇到"时前面加\; 
+		char *substr10=" <br>";//字符串的左部分
+		char *substr11="</div>";   //字符串的右部分
 
-			char *st=NULL;  //暂存第一次出现字符串的首位置
-			char *st1=NULL;  //要提取的字符串首位置
+		char *st=NULL;  //暂存第一次出现字符串的首位置
+		char *st1=NULL;  //要提取的字符串首位置
             
         /*读取HTTP响应*/
         do {
@@ -1004,81 +1009,79 @@ static void get_lunar_task(void * pvParameters)
             //获取城市信息
             st=strstr(recv_buf,substr); //在字符串recv_buf中查找第一次出现字符串的位置，不包含终止符'\0'
 			if(st!=NULL){  //不为空说明找到了字符串
-			 st1=splitx(st,substr1,substr2);
-			 st=NULL;
+				st1=splitx(st,substr1,substr2);
+				st=NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  
-            lv_label_set_text(label4, st1); //文本显示位置信息
-			//printf("城市=%s\n",st1);	 
-			st1=NULL;  //将ST1置空
+				lv_label_set_text(label4, st1); //文本显示位置信息
+				//printf("城市=%s\n",st1);	 
+				st1=NULL;  //将ST1置空
 			}
 
 			//获取城市拼音信息
             st=strstr(recv_buf,substr12); 
 			if(st!=NULL){  
-			 st1=splitx(st,substr13,substr14);
-			 st=NULL;
+				st1=splitx(st,substr13,substr14);
+				st=NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  
-			T_cspy = st1;
-			//printf("城市拼音=%s\n",T_cspy);	 
-			if(rwbz)
-			{  
-				rwbz=0;  
-				xTaskCreate(get_city_code_task, "get_city_code_task", 1024*4, NULL, 1, NULL);  //创建动态任务-网络获得城市代码任务   只创建一次
-				//xTaskCreatePinnedToCore(http_get_task1, "http_get_task1", 1024*4, NULL, 3, NULL, 1);  //初始化显示以及开机界面
-		    }
-			st1=NULL;  
+				T_cspy = st1;
+				//printf("城市拼音=%s\n",T_cspy);	 
+				if(rwbz) {  
+					rwbz=0;  
+					xTaskCreate(get_city_code_task, "get_city_code_task", 1024*4, NULL, 1, NULL);  //创建动态任务-网络获得城市代码任务   只创建一次
+					//xTaskCreatePinnedToCore(http_get_task1, "http_get_task1", 1024*4, NULL, 3, NULL, 1);  //初始化显示以及开机界面
+				}
+				st1=NULL;  
 			}
 
 			//获取公历-年月日信息
             st=strstr(recv_buf,substr3); 
 			if(st!=NULL){  
-			 st1=splitx(st,substr4,substr5);
-			 st=NULL;
+				st1=splitx(st,substr4,substr5);
+				st=NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  
-
-			memcpy(T_csxx, st1, 17); 
-			T_csxx[17] = ' ';
-            T_csxx += 18;
-			//printf("公历=%s\n",st1);	
-			st1=NULL; 
+				memcpy(T_csxx, st1, 17); 
+				T_csxx[17] = ' ';
+				T_csxx += 18;
+				//printf("公历=%s\n",st1);	
+				st1=NULL; 
 			}
 
 			//获取星期信息
             st=strstr(recv_buf,substr6); 
-			if(st!=NULL){  
-			 st1=splitx(st,substr7,substr8);
-			 st=NULL;
+			if(st!=NULL) {  
+				st1=splitx(st,substr7,substr8);
+				st=NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  
-			memcpy(T_csxx, st1, 9); 
-			T_csxx[9] = ' ';
-            T_csxx += 10;
-			//printf("星期=%s\n",st1);	 
-			st1=NULL;  
+				memcpy(T_csxx, st1, 9); 
+				T_csxx[9] = ' ';
+				T_csxx += 10;
+				//printf("星期=%s\n",st1);	 
+				st1=NULL;  
 			}
 
 			//获取农历信息
             st=strstr(recv_buf,substr9); 
 			if(st!=NULL){  
-			 st1=splitx(st,substr10,substr11);
-			 st=NULL;
+				st1=splitx(st,substr10,substr11);
+				st=NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  
-		    T_csxx[31] = ' ';
-			T_csxx[32] = ' ';
-			T_csxx[33] = ' ';
-			T_csxx[34] = ' ';
-			memcpy(T_csxx, st1, 35); 
-			T_csxx[35] = '\0';
-            T_csxx += 36;   
-			lv_label_set_text(label2, csxx);//设置显示文本
-			//printf("农历=%s\n",st1);	 
-			st1=NULL;  
-            //printf("csxx=%s\n",csxx);	 		
-			break;
+				T_csxx[31] = ' ';
+				T_csxx[32] = ' ';
+				T_csxx[33] = ' ';
+				T_csxx[34] = ' ';
+				memcpy(T_csxx, st1, 35); 
+				T_csxx[35] = '\0';
+				T_csxx += 36;   
+				lv_label_set_text(label2, csxx);//设置显示文本
+				//printf("农历=%s\n",st1);	 
+				st1=NULL;  
+				//printf("csxx=%s\n",csxx);	 		
+				break;
 			}
         } while(r > 0);  
         //打印剩余多少内容没有读取
@@ -1152,13 +1155,13 @@ static void get_city_code_task(void * pvParameters)
         }
         ESP_LOGI(TAG, "... socket send success"); 
 
-            //城市代码数组
-            char *substr="([{\"ref\":\""; //查找第一处字符串  遇到"时前面加\; 
-            char *substr1="([{\"ref\":\"";//字符串的左部分
-			char *substr2="~";   //字符串的右部分
+		//城市代码数组
+		char *substr="([{\"ref\":\""; //查找第一处字符串  遇到"时前面加\; 
+		char *substr1="([{\"ref\":\"";//字符串的左部分
+		char *substr2="~";   //字符串的右部分
 
-			char *st=NULL;  //暂存第一次出现字符串的首位置
-			char *st1=NULL;  //要提取的字符串首位置
+		char *st=NULL;  //暂存第一次出现字符串的首位置
+		char *st1=NULL;  //要提取的字符串首位置
             
         /*读取HTTP响应*/
         do {
@@ -1168,19 +1171,19 @@ static void get_city_code_task(void * pvParameters)
 
             //获取城市信息
             st=strstr(recv_buf,substr); //在字符串recv_buf中查找第一次出现字符串的位置，不包含终止符'\0'
-			if(st!=NULL){  //不为空说明找到了字符串
-			 st1=splitx(st,substr1,substr2);//将字符串ST分割，分割符号"temp\":\""，要分割的第几个符号
-			 st=NULL;
+			if(st!=NULL) {  //不为空说明找到了字符串
+				st1 = splitx(st,substr1,substr2);//将字符串ST分割，分割符号"temp\":\""，要分割的第几个符号
+				st = NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  //如果ST1不为空并且ST1不为OK  --正常时
-			//printf("城市代码=%s\n",st1);	
-			T_csdm = st1;  //城市代码  指针地址赋值 到另一个指针变量的地址
-			//printf("T_csdm=%s\n",T_csdm);	
-			xTaskCreatePinnedToCore(get_weather_task, "get_weather_task", 1024*8, NULL, 1, &xHandle_task2, tskNO_AFFINITY);  //初始化显示以及开机界面
-			vTaskSuspend(xHandle_task1);  //挂起任务1
-            vTaskDelete(NULL); 
-			st1=NULL;  //将ST1置空
-			break;
+				//printf("城市代码=%s\n",st1);	
+				T_csdm = st1;  //城市代码  指针地址赋值 到另一个指针变量的地址
+				//printf("T_csdm=%s\n",T_csdm);	
+				xTaskCreatePinnedToCore(get_weather_task, "get_weather_task", 1024*8, NULL, 1, &xHandle_task2, tskNO_AFFINITY);  //初始化显示以及开机界面
+				vTaskSuspend(xHandle_task1);  //挂起任务1
+				vTaskDelete(NULL); 
+				st1 = NULL;  //将ST1置空
+				break;
 			}
         } while(r > 0); 
 
@@ -1570,18 +1573,60 @@ void get_now_time(void)
 void startup_task(void)
 {
 	static uint8_t page_id = 0;
-	if (page_id == 0){page_id = 1;lv_img_set_src(img2, &windows_gd0);}
-	else if (page_id == 1){page_id = 2;lv_img_set_src(img2, &windows_gd1);}
-	else if (page_id == 2){page_id = 3;lv_img_set_src(img2, &windows_gd2);}
-	else if (page_id == 3){page_id = 4;lv_img_set_src(img2, &windows_gd3);}
-	else if (page_id == 4){page_id = 5;lv_img_set_src(img2, &windows_gd4);}
-	else if (page_id == 5){page_id = 6;lv_img_set_src(img2, &windows_gd5);}
-	else if (page_id == 6){page_id = 7;lv_img_set_src(img2, &windows_gd6);}
-	else if (page_id == 7){page_id = 8;lv_img_set_src(img2, &windows_gd7);}
-	else if (page_id == 8){page_id = 9;lv_img_set_src(img2, &windows_gd8);}
-	else if (page_id == 9){page_id = 10;lv_img_set_src(img2, &windows_gd9);}
-	else if (page_id == 10){page_id = 11;lv_img_set_src(img2, &windows_gd10);}
-	else if (page_id == 11){page_id = 0;lv_img_set_src(img2, &windows_gd11);}
+
+	switch (page_id)
+	{
+	case 0:
+		page_id = 1;
+		lv_img_set_src(img2, &windows_gd0);
+		break;
+	case 1:
+		page_id = 2;
+		lv_img_set_src(img2, &windows_gd1);
+		break;
+	case 2:
+		page_id = 3;
+		lv_img_set_src(img2, &windows_gd2);
+		break;
+	case 3:
+		page_id = 4;
+		lv_img_set_src(img2, &windows_gd3);
+		break;
+	case 4:
+		page_id = 5;
+		lv_img_set_src(img2, &windows_gd4);
+		break;
+	case 5:
+		page_id = 6;
+		lv_img_set_src(img2, &windows_gd5);
+		break;
+	case 6:
+		page_id = 7;
+		lv_img_set_src(img2, &windows_gd6);
+		break;
+	case 7:
+		page_id = 8;
+		lv_img_set_src(img2, &windows_gd7);
+		break;
+	case 8:
+		page_id = 9;
+		lv_img_set_src(img2, &windows_gd8);
+		break;
+	case 9:
+		page_id = 10;
+		lv_img_set_src(img2, &windows_gd9);
+		break;
+	case 10:
+		page_id = 11;
+		lv_img_set_src(img2, &windows_gd10);
+		break;
+	case 11:
+		page_id = 0;
+		lv_img_set_src(img2, &windows_gd11);
+		break;
+	default:
+		break;
+	}
 	//lv_task_del(task1);task1 = NULL;
 }
 
