@@ -1,0 +1,23 @@
+{
+"idf.showOnboardingOnInit": true,
+"idf.espIdfPathWin": "/Users/denis/IdeaProjects/esp-idf",
+"files.associations": {
+    "err.h": "c",
+    "esp_log.h": "c",
+    "esp_event.h": "c",
+    "esp_system.h": "c",
+    "esp_wifi.h": "c",
+    "esp_netif.h": "c",
+    "esp_sntp.h": "c",
+    "esp_smartconfig.h": "c",
+    "freertos.h": "c",
+    "esp_event_legacy.h": "c",
+    "esp_err.h": "c",
+    "stdbool.h": "c",
+    "event_groups.h": "c",
+    "esp_freertos_hooks.h": "c",
+    "semphr.h": "c",
+    "gpio.h": "c"
+},
+"C_Cpp.errorSquiggles": "Disabled",
+}
