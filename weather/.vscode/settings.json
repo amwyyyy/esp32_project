@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "*.ipp": "cpp",
-        "sstream": "cpp",
-        "strstream": "cpp"
-    }
-}
