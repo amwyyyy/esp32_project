@@ -26,7 +26,7 @@
 #include "lwip/sockets.h"
 // Littlevgl 头文件
 #include "lvgl/lvgl.h"	  // LVGL头文件
-#include "lvgl_helpers.h" // 助手 硬件驱动相关
+#include "lvgl_helpers.h" // 硬件驱动相关帮助
 #include "lv_examples/src/lv_demo_widgets/lv_demo_widgets.h"
 
 /* 宏定义WiFi更新标识码、WiFi名称和密码 */
@@ -61,15 +61,15 @@ static const char *REQUEST = "GET " WEB_URL " HTTP/1.1\n"
     "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1\n"
     "\n";
 
-char *T_cspy = NULL; // 缓存数组指针--保存城市拼音
-char cspy2[200] ="GET http://toy1.weather.com.cn/search?cityname=";
+char *t_city_py = NULL; // 缓存数组指针--保存城市拼音
+char city_py[200] ="GET http://toy1.weather.com.cn/search?cityname=";
 char *REQUEST1 = " HTTP/1.1\r\n"
     "Host: "WEB_SERVER1"\r\n"
     "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1\r\n"
     "\r\n";
-char *T_cspy2 =&cspy2[0];
+char *t_city_py_2 =&city_py[0];
 
-char *T_csdm = NULL; // 缓存数组指针--保存城市代码
+char *t_city_code = NULL; // 缓存数组指针--保存城市代码
 char p[200] ="GET http://www.weather.com.cn/weather/";
 char *REQUEST2 = ".shtml HTTP/1.1\r\n"
 	"Host: "WEB_SERVER2"\r\n"
@@ -177,15 +177,15 @@ lv_obj_t *img4 = NULL;
 //标签控件声明，声明在外部回调中需要调用
 lv_obj_t *label2 = NULL;  
 lv_obj_t *label3 = NULL;  
-lv_obj_t *label4 = NULL;  
-lv_obj_t *label5 = NULL;  
-lv_obj_t *label5_1 = NULL;  
-lv_obj_t *label5_2 = NULL;  
-lv_obj_t *label5_3 = NULL; 
-lv_obj_t *label5_4 = NULL;  
-lv_obj_t *label5_5 = NULL;  
-lv_obj_t *label6 = NULL;  
-lv_obj_t *label6_1 = NULL;  
+lv_obj_t *location_label = NULL;  
+lv_obj_t *date_label = NULL;  
+lv_obj_t *weather_label = NULL;  
+lv_obj_t *low_label = NULL;  
+lv_obj_t *wine_label = NULL; 
+lv_obj_t *wine_level_label = NULL;  
+lv_obj_t *high_label = NULL;  
+lv_obj_t *tomorrow_date_label = NULL;  
+lv_obj_t *tomorrow_weather_label = NULL;  
 lv_obj_t *label6_2 = NULL;  
 lv_obj_t *label6_3 = NULL;  
 lv_obj_t *label6_4 = NULL;  
@@ -203,9 +203,9 @@ lv_task_t *task1 = NULL;
 lv_obj_t *roller1 = NULL;
 
 //创建页签对象-显示天气信息
-lv_obj_t *tabview = NULL;
+lv_obj_t *weather_tab = NULL;
 //创建页签对象-显示背景图片
-lv_obj_t *bjtuyq = NULL;
+lv_obj_t *bg_img_tab = NULL;
 
 //创建一个信号量来处理对lvgl的并发调用
 SemaphoreHandle_t xGuiSemaphore; // 创建一个GUI信号量
@@ -386,16 +386,17 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,int32_t ev
 void task2_cb(void)
 {
     static uint8_t i=0;
-	if(i==0){
-		i=1;
+	if(i == 0){
+		i = 1;
 		lv_img_set_src(img4, &dl_0);
-	} else if(i==1){
-		i=2;lv_img_set_src(img4, &dl_1);
-	} else if(i==2){
-		i=3;
+	} else if(i == 1){
+		i = 2;
+		lv_img_set_src(img4, &dl_1);
+	} else if(i == 2){
+		i = 3;
 		lv_img_set_src(img4, &dl_2);
-	} else if(i==3){
-		i=0;
+	} else if(i == 3){
+		i = 0;
 		lv_img_set_src(img4, &dl_3);
 	}
 }
@@ -406,52 +407,51 @@ void task3_cb(void)
 	static uint8_t page_id = 0,page_id1 = 0;
 	page_id++;
 
-	if(page_id==4) {
+	if(page_id == 4) {
 		page_id = 0;
 		page_id1++;
 	}
-	if(page_id1==4) {
+	if(page_id1 == 4) {
 		page_id1 = 0;
 	}
-	lv_tabview_set_tab_act(tabview,page_id,LV_ANIM_ON);//带有切换动画效果
-	lv_tabview_set_tab_act(bjtuyq,page_id1,LV_ANIM_ON);//带有切换动画效果
+	lv_tabview_set_tab_act(weather_tab, page_id, LV_ANIM_ON);//带有切换动画效果
+	lv_tabview_set_tab_act(bg_img_tab, page_id1, LV_ANIM_ON);//带有切换动画效果
 }
 
 //表盘显示任务
 static void dashboard_task(void *pvParameter)
 {
-	int i=0;
-    //tabview 分页标签控件
-	bjtuyq = lv_tabview_create(lv_scr_act(), NULL);
-	lv_obj_set_size(bjtuyq,240,240);  
-	lv_obj_align(bjtuyq,NULL,LV_ALIGN_IN_TOP_LEFT,0,0);
-	lv_tabview_set_btns_pos(bjtuyq,LV_TABVIEW_TAB_POS_NONE);
-	lv_obj_t *bj1 = lv_tabview_add_tab(bjtuyq, "b1");	
-	lv_obj_t *bj2 = lv_tabview_add_tab(bjtuyq, "b2");
-	lv_obj_t *bj3 = lv_tabview_add_tab(bjtuyq, "b3");
-	lv_obj_t *bj4 = lv_tabview_add_tab(bjtuyq, "b4");
+	int i = 0;
+    //weather_tab 分页标签控件
+	bg_img_tab = lv_tabview_create(lv_scr_act(), NULL);
+	lv_obj_set_size(bg_img_tab, 240, 240);  
+	lv_obj_align(bg_img_tab, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+	lv_tabview_set_btns_pos(bg_img_tab, LV_TABVIEW_TAB_POS_NONE);
+	lv_obj_t *bg1 = lv_tabview_add_tab(bg_img_tab, "b1");	
+	lv_obj_t *bg2 = lv_tabview_add_tab(bg_img_tab, "b2");
+	lv_obj_t *bg3 = lv_tabview_add_tab(bg_img_tab, "b3");
+	lv_obj_t *bg4 = lv_tabview_add_tab(bg_img_tab, "b4");
 
     //显示表盘背景
-	lv_obj_t *img5 = lv_img_create(bj1, NULL);
-	lv_img_set_src(img5, &bpbj2);
-	lv_obj_align(img5, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
-	lv_page_set_scrollbar_mode(bj1, LV_SCRLBAR_MODE_OFF);  
-
+	lv_obj_t *bg_img1 = lv_img_create(bg1, NULL);
+	lv_img_set_src(bg_img1, &bpbj2);
+	lv_obj_align(bg_img1, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+	lv_page_set_scrollbar_mode(bg1, LV_SCRLBAR_MODE_OFF);  
     //显示表盘背景
-	lv_obj_t *img6 = lv_img_create(bj2, NULL);
-	lv_img_set_src(img6, &bpbj4);
-	lv_obj_align(img6, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
-	lv_page_set_scrollbar_mode(bj2, LV_SCRLBAR_MODE_OFF); 
+	lv_obj_t *bg_img2 = lv_img_create(bg2, NULL);
+	lv_img_set_src(bg_img2, &bpbj4);
+	lv_obj_align(bg_img2, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+	lv_page_set_scrollbar_mode(bg2, LV_SCRLBAR_MODE_OFF); 
 	//显示表盘背景
-	lv_obj_t *img7 = lv_img_create(bj3, NULL);
-	lv_img_set_src(img7, &bpbj5);
-	lv_obj_align(img7, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
-	lv_page_set_scrollbar_mode(bj3, LV_SCRLBAR_MODE_OFF);  
+	lv_obj_t *bg_img3 = lv_img_create(bg3, NULL);
+	lv_img_set_src(bg_img3, &bpbj5);
+	lv_obj_align(bg_img3, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+	lv_page_set_scrollbar_mode(bg3, LV_SCRLBAR_MODE_OFF);  
 	//显示表盘背景
-	lv_obj_t *img8 = lv_img_create(bj4, NULL);
-	lv_img_set_src(img8, &bpbj3);
-	lv_obj_align(img8, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
-	lv_page_set_scrollbar_mode(bj4, LV_SCRLBAR_MODE_OFF);  
+	lv_obj_t *bg_img4 = lv_img_create(bg4, NULL);
+	lv_img_set_src(bg_img4, &bpbj3);
+	lv_obj_align(bg_img4, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+	lv_page_set_scrollbar_mode(bg4, LV_SCRLBAR_MODE_OFF);  
 
     //文本-电量换颜色
 	// static lv_style_t text_style1;	
@@ -500,112 +500,112 @@ static void dashboard_task(void *pvParameter)
     lv_obj_add_style(label2,LV_LABEL_PART_MAIN, &bg_style); 
 
     //创建页签背景样式
-    static lv_style_t yq_style;
-    lv_style_init(&yq_style);	
-	lv_style_set_text_font(&yq_style, LV_STATE_DEFAULT, &myfont_cshz_18); 
-    lv_style_set_bg_opa(&yq_style, LV_STATE_DEFAULT, LV_OPA_30);  
-    lv_style_set_bg_color(&yq_style, LV_STATE_DEFAULT, LV_COLOR_GRAY);  
-    lv_style_set_text_color(&yq_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+    static lv_style_t tab_bg_style;
+    lv_style_init(&tab_bg_style);	
+	lv_style_set_text_font(&tab_bg_style, LV_STATE_DEFAULT, &myfont_cshz_18); 
+    lv_style_set_bg_opa(&tab_bg_style, LV_STATE_DEFAULT, LV_OPA_30);  
+    lv_style_set_bg_color(&tab_bg_style, LV_STATE_DEFAULT, LV_COLOR_GRAY);  
+    lv_style_set_text_color(&tab_bg_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
-    //tabview 分页标签控件
-	tabview = lv_tabview_create(lv_scr_act(), NULL);
-	lv_obj_set_size(tabview,240,100);  
-	lv_obj_align(tabview,NULL,LV_ALIGN_IN_TOP_LEFT,0,139);
-	lv_tabview_set_btns_pos(tabview,LV_TABVIEW_TAB_POS_NONE);
-	lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "Tab 1");	
-	lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Tab 2");
-	lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "Tab 3");
-	lv_obj_t *tab4 = lv_tabview_add_tab(tabview, "Tab 4");
-    lv_obj_add_style(tabview,LV_LABEL_PART_MAIN, &yq_style); 
+    //weather_tab 分页标签控件
+	weather_tab = lv_tabview_create(lv_scr_act(), NULL);
+	lv_obj_set_size(weather_tab, 240, 100);  
+	lv_obj_align(weather_tab, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 139);
+	lv_tabview_set_btns_pos(weather_tab, LV_TABVIEW_TAB_POS_NONE);
+	lv_obj_t *tab1 = lv_tabview_add_tab(weather_tab, "Tab 1");	
+	lv_obj_t *tab2 = lv_tabview_add_tab(weather_tab, "Tab 2");
+	lv_obj_t *tab3 = lv_tabview_add_tab(weather_tab, "Tab 3");
+	lv_obj_t *tab4 = lv_tabview_add_tab(weather_tab, "Tab 4");
+    lv_obj_add_style(weather_tab, LV_LABEL_PART_MAIN, &tab_bg_style); 
 
     //显示天气图标
-	lv_obj_t *TQ_TB1 = lv_img_create(tab1, NULL);
-	lv_img_set_src(TQ_TB1, NULL); 
-	//lv_img_set_src(TQ_TB1, &tq_99);  //显示天气图标
-	lv_obj_align(TQ_TB1, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 18);  
+	lv_obj_t *weather_icon1 = lv_img_create(tab1, NULL);
+	lv_img_set_src(weather_icon1, NULL); 
+	//lv_img_set_src(weather_icon1, &tq_99);  //显示天气图标
+	lv_obj_align(weather_icon1, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 18);  
     lv_page_set_scrollbar_mode(tab1, LV_SCRLBAR_MODE_OFF); 
 
-	lv_obj_t *TQ_TB2 = lv_img_create(tab2, NULL);
-	lv_img_set_src(TQ_TB2, NULL);  
-	//lv_img_set_src(TQ_TB2, &tq_99);  //显示天气图标
-	lv_obj_align(TQ_TB2, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 18);  
+	lv_obj_t *weather_icon2 = lv_img_create(tab2, NULL);
+	lv_img_set_src(weather_icon2, NULL);  
+	//lv_img_set_src(weather_icon2, &tq_99);  //显示天气图标
+	lv_obj_align(weather_icon2, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 18);  
     lv_page_set_scrollbar_mode(tab2, LV_SCRLBAR_MODE_OFF); 
 
-	lv_obj_t *TQ_TB3 = lv_img_create(tab3, NULL);
-	lv_img_set_src(TQ_TB3, NULL); 
-	//lv_img_set_src(TQ_TB3, &tq_99);  //显示天气图标
-	lv_obj_align(TQ_TB3, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 18);  
+	lv_obj_t *weather_icon3 = lv_img_create(tab3, NULL);
+	lv_img_set_src(weather_icon3, NULL); 
+	//lv_img_set_src(weather_icon3, &tq_99);  //显示天气图标
+	lv_obj_align(weather_icon3, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 18);  
 	lv_page_set_scrollbar_mode(tab3, LV_SCRLBAR_MODE_OFF);  
 
 	lv_obj_t * label = lv_label_create(tab4, NULL);			
 	lv_label_set_text(label, "生于忧患,死于安乐!!");		// 设置标签内容
-	lv_obj_align(label, NULL, LV_ALIGN_IN_TOP_LEFT,20,35); 
-	lv_obj_add_style(label,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_align(label, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 35); 
+	lv_obj_add_style(label, LV_LABEL_PART_MAIN, &bghz_style); 
     lv_page_set_scrollbar_mode(tab4, LV_SCRLBAR_MODE_OFF); 
 
     //创建LVGL任务-页签动图
 	//lv_task_t *task3 = lv_task_create((lv_task_cb_t)task3_cb, 3000, LV_TASK_PRIO_MID, NULL);
     lv_task_create((lv_task_cb_t)task3_cb, 3000, LV_TASK_PRIO_MID, NULL);
 
-    //Label4 位置文本显示
-	label4 = lv_label_create(lv_scr_act(), NULL);   
-	lv_label_set_text(label4, NULL);	
-	lv_obj_align(label4, wztb, LV_ALIGN_IN_TOP_LEFT,32,7); 
-	lv_obj_add_style(label4,LV_LABEL_PART_MAIN, &yq_style);  
+    // 位置文本显示
+	location_label = lv_label_create(lv_scr_act(), NULL);   
+	lv_label_set_text(location_label, NULL);	
+	lv_obj_align(location_label, wztb, LV_ALIGN_IN_TOP_LEFT,32,7); 
+	lv_obj_add_style(location_label,LV_LABEL_PART_MAIN, &tab_bg_style);  
 
-    //Label5 今天日子文本显示
-	label5 = lv_label_create(tab1, NULL);  
-	lv_label_set_text(label5, NULL);	
-	lv_obj_align(label5, NULL, LV_ALIGN_IN_TOP_LEFT,90,8); 
-	lv_obj_add_style(label5,LV_LABEL_PART_MAIN, &bghz_style); 
+    // 今天日子文本显示
+	date_label = lv_label_create(tab1, NULL);  
+	lv_label_set_text(date_label, NULL);	
+	lv_obj_align(date_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 8); 
+	lv_obj_add_style(date_label,LV_LABEL_PART_MAIN, &bghz_style); 
 
-	//Label5_1 今天天气文本显示
-	label5_1 = lv_label_create(tab1, NULL);   
-	lv_label_set_text(label5_1, NULL);	
-	lv_obj_align(label5_1, NULL, LV_ALIGN_IN_TOP_LEFT,90,31); 
-	lv_obj_add_style(label5_1,LV_LABEL_PART_MAIN, &bghz_style);  
+	// 今天天气文本显示
+	weather_label = lv_label_create(tab1, NULL);   
+	lv_label_set_text(weather_label, NULL);	
+	lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 31); 
+	lv_obj_add_style(weather_label,LV_LABEL_PART_MAIN, &bghz_style);  
 
-	//Label5_2 今天最低气温文本显示
-	label5_2 = lv_label_create(tab1, NULL);  
-	lv_label_set_text(label5_2, NULL);
-	lv_obj_align(label5_2, NULL, LV_ALIGN_IN_TOP_LEFT,144,54); 
-	lv_obj_add_style(label5_2,LV_LABEL_PART_MAIN, &bghz_style);  
+	// 今天最低气温文本显示
+	low_label = lv_label_create(tab1, NULL);  
+	lv_label_set_text(low_label, NULL);
+	lv_obj_align(low_label, NULL, LV_ALIGN_IN_TOP_LEFT, 144, 54); 
+	lv_obj_add_style(low_label,LV_LABEL_PART_MAIN, &bghz_style);  
 
-	//Label5_3 今天风向文本显示
-	label5_3 = lv_label_create(tab1, NULL);  
-	lv_label_set_text(label5_3, NULL);	
-	lv_obj_align(label5_3, NULL, LV_ALIGN_IN_TOP_LEFT,182,54); 
-	lv_obj_add_style(label5_3,LV_LABEL_PART_MAIN, &bghz_style);  
+	// 今天风向文本显示
+	wine_label = lv_label_create(tab1, NULL);  
+	lv_label_set_text(wine_label, NULL);	
+	lv_obj_align(wine_label, NULL, LV_ALIGN_IN_TOP_LEFT, 182, 54); 
+	lv_obj_add_style(wine_label,LV_LABEL_PART_MAIN, &bghz_style);  
 
-	//Label5_4 今天风力文本显示
-	label5_4 = lv_label_create(tab1, NULL);  
-	lv_label_set_text(label5_4, NULL);	
-	lv_obj_align(label5_4, NULL, LV_ALIGN_IN_TOP_LEFT,90,77); 
-	lv_obj_add_style(label5_4,LV_LABEL_PART_MAIN, &bghz_style); 
+	// 今天风力文本显示
+	wine_level_label = lv_label_create(tab1, NULL);  
+	lv_label_set_text(wine_level_label, NULL);	
+	lv_obj_align(wine_level_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 77); 
+	lv_obj_add_style(wine_level_label,LV_LABEL_PART_MAIN, &bghz_style); 
 
-	//Label5_5 今天最高温度显示
-	label5_5 = lv_label_create(tab1, NULL);  
-	lv_label_set_text(label5_5, NULL);
-	lv_obj_align(label5_5, NULL, LV_ALIGN_IN_TOP_LEFT,90,54); 
-	lv_obj_add_style(label5_5,LV_LABEL_PART_MAIN, &bghz_style); 
+	// 今天最高温度显示
+	high_label = lv_label_create(tab1, NULL);  
+	lv_label_set_text(high_label, NULL);
+	lv_obj_align(high_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 54); 
+	lv_obj_add_style(high_label,LV_LABEL_PART_MAIN, &bghz_style); 
 
-	//Label5_5 今天最高温度显示
-	lv_obj_t *label5_6 = lv_label_create(tab1, NULL);  
-	lv_label_set_text(label5_6, "/");	
-	lv_obj_align(label5_6, NULL, LV_ALIGN_IN_TOP_LEFT,126,54); 
-	lv_obj_add_style(label5_6,LV_LABEL_PART_MAIN, &bghz_style);  
+	// 温度显示分割
+	lv_obj_t *split_label = lv_label_create(tab1, NULL);  
+	lv_label_set_text(split_label, "/");	
+	lv_obj_align(split_label, NULL, LV_ALIGN_IN_TOP_LEFT, 126, 54); 
+	lv_obj_add_style(split_label,LV_LABEL_PART_MAIN, &bghz_style);  
 /*****************************************************/
-    //Label6 明天日子文本显示
-	label6 = lv_label_create(tab2, NULL); 
-	lv_label_set_text(label6, NULL);	
-	lv_obj_align(label6, NULL, LV_ALIGN_IN_TOP_LEFT,90,8); 
-	lv_obj_add_style(label6,LV_LABEL_PART_MAIN, &bghz_style); 
+    // 明天日子文本显示
+	tomorrow_date_label = lv_label_create(tab2, NULL); 
+	lv_label_set_text(tomorrow_date_label, NULL);	
+	lv_obj_align(tomorrow_date_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 8); 
+	lv_obj_add_style(tomorrow_date_label,LV_LABEL_PART_MAIN, &bghz_style); 
 
-	//Label6_1 明天天气文本显示
-	label6_1 = lv_label_create(tab2, NULL);  
-	lv_label_set_text(label6_1, NULL);	
-	lv_obj_align(label6_1, NULL, LV_ALIGN_IN_TOP_LEFT,90,31); 
-	lv_obj_add_style(label6_1,LV_LABEL_PART_MAIN, &bghz_style); 
+	// 明天天气文本显示
+	tomorrow_weather_label = lv_label_create(tab2, NULL);  
+	lv_label_set_text(tomorrow_weather_label, NULL);	
+	lv_obj_align(tomorrow_weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 31); 
+	lv_obj_add_style(tomorrow_weather_label,LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label5_2 明天最低气温文本显示
 	label6_2 = lv_label_create(tab2, NULL);  
@@ -683,15 +683,15 @@ static void dashboard_task(void *pvParameter)
 	{   
 		if(weather1.biaozhiwei==1)
 		{
-			lv_label_set_text(label5,weather1.rizi);	   
-            lv_label_set_text(label5_1, weather1.tianqi);	
-			lv_label_set_text(label5_2, weather1.zdwendu);
-			lv_label_set_text(label5_3, weather1.fengx);	
-			lv_label_set_text(label5_4, weather1.fengji);	
-			lv_label_set_text(label5_5, weather1.zgwendu);	
+			lv_label_set_text(date_label,weather1.rizi);	   
+            lv_label_set_text(weather_label, weather1.tianqi);	
+			lv_label_set_text(low_label, weather1.zdwendu);
+			lv_label_set_text(wine_label, weather1.fengx);	
+			lv_label_set_text(wine_level_label, weather1.fengji);	
+			lv_label_set_text(high_label, weather1.zgwendu);	
 
-			lv_label_set_text(label6,weather2.rizi);	   
-            lv_label_set_text(label6_1, weather2.tianqi);	
+			lv_label_set_text(tomorrow_date_label,weather2.rizi);	   
+            lv_label_set_text(tomorrow_weather_label, weather2.tianqi);	
 			lv_label_set_text(label6_2, weather2.zdwendu);
 			lv_label_set_text(label6_3, weather2.fengx);	
 			lv_label_set_text(label6_4, weather2.fengji);	
@@ -704,140 +704,140 @@ static void dashboard_task(void *pvParameter)
 			lv_label_set_text(label7_4, weather3.fengji);	
 			lv_label_set_text(label7_5, weather3.zgwendu);	
 
-			// lv_img_set_src(TQ_TB1, &tq_1);  //显示天气图标
-			// lv_img_set_src(TQ_TB2, &tq_1);  //显示天气图标
-			// lv_img_set_src(TQ_TB3, &tq_9);  //显示天气图标
+			// lv_img_set_src(weather_icon1, &tq_1);  //显示天气图标
+			// lv_img_set_src(weather_icon2, &tq_1);  //显示天气图标
+			// lv_img_set_src(weather_icon3, &tq_9);  //显示天气图标
             
 			i=atoi(weather1.xwtianqi);
 			switch(i)
 			{
-                case 0: lv_img_set_src(TQ_TB1, &tq_0); break; //显示天气图标
-                case 1: lv_img_set_src(TQ_TB1, &tq_1); break; 
-                case 2: lv_img_set_src(TQ_TB1, &tq_2); break; 
-				case 3: lv_img_set_src(TQ_TB1, &tq_3); break; 
-				case 4: lv_img_set_src(TQ_TB1, &tq_4); break; 
-				case 5: lv_img_set_src(TQ_TB1, &tq_5); break; 
-				case 6: lv_img_set_src(TQ_TB1, &tq_6); break; 
-				case 7: lv_img_set_src(TQ_TB1, &tq_7); break; 
-				case 8: lv_img_set_src(TQ_TB1, &tq_8); break; 
-				case 9: lv_img_set_src(TQ_TB1, &tq_9); break; 
-				case 10: lv_img_set_src(TQ_TB1, &tq_10); break; 
-				case 11: lv_img_set_src(TQ_TB1, &tq_11); break; 
-				case 12: lv_img_set_src(TQ_TB1, &tq_12); break; 
-				case 13: lv_img_set_src(TQ_TB1, &tq_13); break; 
-				case 14: lv_img_set_src(TQ_TB1, &tq_14); break; 
-				case 15: lv_img_set_src(TQ_TB1, &tq_15); break; 
-				case 16: lv_img_set_src(TQ_TB1, &tq_16); break; 
-				case 17: lv_img_set_src(TQ_TB1, &tq_17); break; 
-				case 18: lv_img_set_src(TQ_TB1, &tq_18); break; 
-				case 19: lv_img_set_src(TQ_TB1, &tq_19); break; 
-				case 20: lv_img_set_src(TQ_TB1, &tq_20); break; 
-				case 21: lv_img_set_src(TQ_TB1, &tq_21); break; 
-				case 22: lv_img_set_src(TQ_TB1, &tq_22); break; 
-				case 23: lv_img_set_src(TQ_TB1, &tq_23); break; 
-				case 24: lv_img_set_src(TQ_TB1, &tq_24); break; 
-				case 29: lv_img_set_src(TQ_TB1, &tq_29); break; 
-				case 30: lv_img_set_src(TQ_TB1, &tq_30); break; 
-				case 31: lv_img_set_src(TQ_TB1, &tq_31); break; 
-				case 32: lv_img_set_src(TQ_TB1, &tq_32); break; 
-				case 49: lv_img_set_src(TQ_TB1, &tq_49); break; 
-				case 53: lv_img_set_src(TQ_TB1, &tq_53); break; 
-				case 54: lv_img_set_src(TQ_TB1, &tq_54); break; 
-				case 55: lv_img_set_src(TQ_TB1, &tq_55); break;
-				case 56: lv_img_set_src(TQ_TB1, &tq_56); break; 
-				case 57: lv_img_set_src(TQ_TB1, &tq_57); break; 
-				case 58: lv_img_set_src(TQ_TB1, &tq_58); break; 
-				case 301: lv_img_set_src(TQ_TB1, &tq_301); break; 
-				case 302: lv_img_set_src(TQ_TB1, &tq_302); break; 
-				default: lv_img_set_src(TQ_TB1, &tq_99); break; 
+                case 0: lv_img_set_src(weather_icon1, &tq_0); break; //显示天气图标
+                case 1: lv_img_set_src(weather_icon1, &tq_1); break; 
+                case 2: lv_img_set_src(weather_icon1, &tq_2); break; 
+				case 3: lv_img_set_src(weather_icon1, &tq_3); break; 
+				case 4: lv_img_set_src(weather_icon1, &tq_4); break; 
+				case 5: lv_img_set_src(weather_icon1, &tq_5); break; 
+				case 6: lv_img_set_src(weather_icon1, &tq_6); break; 
+				case 7: lv_img_set_src(weather_icon1, &tq_7); break; 
+				case 8: lv_img_set_src(weather_icon1, &tq_8); break; 
+				case 9: lv_img_set_src(weather_icon1, &tq_9); break; 
+				case 10: lv_img_set_src(weather_icon1, &tq_10); break; 
+				case 11: lv_img_set_src(weather_icon1, &tq_11); break; 
+				case 12: lv_img_set_src(weather_icon1, &tq_12); break; 
+				case 13: lv_img_set_src(weather_icon1, &tq_13); break; 
+				case 14: lv_img_set_src(weather_icon1, &tq_14); break; 
+				case 15: lv_img_set_src(weather_icon1, &tq_15); break; 
+				case 16: lv_img_set_src(weather_icon1, &tq_16); break; 
+				case 17: lv_img_set_src(weather_icon1, &tq_17); break; 
+				case 18: lv_img_set_src(weather_icon1, &tq_18); break; 
+				case 19: lv_img_set_src(weather_icon1, &tq_19); break; 
+				case 20: lv_img_set_src(weather_icon1, &tq_20); break; 
+				case 21: lv_img_set_src(weather_icon1, &tq_21); break; 
+				case 22: lv_img_set_src(weather_icon1, &tq_22); break; 
+				case 23: lv_img_set_src(weather_icon1, &tq_23); break; 
+				case 24: lv_img_set_src(weather_icon1, &tq_24); break; 
+				case 29: lv_img_set_src(weather_icon1, &tq_29); break; 
+				case 30: lv_img_set_src(weather_icon1, &tq_30); break; 
+				case 31: lv_img_set_src(weather_icon1, &tq_31); break; 
+				case 32: lv_img_set_src(weather_icon1, &tq_32); break; 
+				case 49: lv_img_set_src(weather_icon1, &tq_49); break; 
+				case 53: lv_img_set_src(weather_icon1, &tq_53); break; 
+				case 54: lv_img_set_src(weather_icon1, &tq_54); break; 
+				case 55: lv_img_set_src(weather_icon1, &tq_55); break;
+				case 56: lv_img_set_src(weather_icon1, &tq_56); break; 
+				case 57: lv_img_set_src(weather_icon1, &tq_57); break; 
+				case 58: lv_img_set_src(weather_icon1, &tq_58); break; 
+				case 301: lv_img_set_src(weather_icon1, &tq_301); break; 
+				case 302: lv_img_set_src(weather_icon1, &tq_302); break; 
+				default: lv_img_set_src(weather_icon1, &tq_99); break; 
 			}
 
 			i=atoi(weather2.xwtianqi);
 			switch(i)
 			{
-                case 0: lv_img_set_src(TQ_TB2, &tq_0); break; 
-                case 1: lv_img_set_src(TQ_TB2, &tq_1); break; 
-                case 2: lv_img_set_src(TQ_TB2, &tq_2); break; 
-				case 3: lv_img_set_src(TQ_TB2, &tq_3); break; 
-				case 4: lv_img_set_src(TQ_TB2, &tq_4); break; 
-				case 5: lv_img_set_src(TQ_TB2, &tq_5); break; 
-				case 6: lv_img_set_src(TQ_TB2, &tq_6); break; 
-				case 7: lv_img_set_src(TQ_TB2, &tq_7); break; 
-				case 8: lv_img_set_src(TQ_TB2, &tq_8); break; 
-				case 9: lv_img_set_src(TQ_TB2, &tq_9); break; 
-				case 10: lv_img_set_src(TQ_TB2, &tq_10); break; 
-				case 11: lv_img_set_src(TQ_TB2, &tq_11); break; 
-				case 12: lv_img_set_src(TQ_TB2, &tq_12); break; 
-				case 13: lv_img_set_src(TQ_TB2, &tq_13); break; 
-				case 14: lv_img_set_src(TQ_TB2, &tq_14); break; 
-				case 15: lv_img_set_src(TQ_TB2, &tq_15); break; 
-				case 16: lv_img_set_src(TQ_TB2, &tq_16); break; 
-				case 17: lv_img_set_src(TQ_TB2, &tq_17); break; 
-				case 18: lv_img_set_src(TQ_TB2, &tq_18); break; 
-				case 19: lv_img_set_src(TQ_TB2, &tq_19); break; 
-				case 20: lv_img_set_src(TQ_TB2, &tq_20); break; 
-				case 21: lv_img_set_src(TQ_TB2, &tq_21); break; 
-				case 22: lv_img_set_src(TQ_TB2, &tq_22); break; 
-				case 23: lv_img_set_src(TQ_TB2, &tq_23); break; 
-				case 24: lv_img_set_src(TQ_TB2, &tq_24); break; 
-				case 29: lv_img_set_src(TQ_TB2, &tq_29); break; 
-				case 30: lv_img_set_src(TQ_TB2, &tq_30); break; 
-				case 31: lv_img_set_src(TQ_TB2, &tq_31); break; 
-				case 32: lv_img_set_src(TQ_TB2, &tq_32); break; 
-				case 49: lv_img_set_src(TQ_TB2, &tq_49); break; 
-				case 53: lv_img_set_src(TQ_TB2, &tq_53); break; 
-				case 54: lv_img_set_src(TQ_TB2, &tq_54); break; 
-				case 55: lv_img_set_src(TQ_TB2, &tq_55); break; 
-				case 56: lv_img_set_src(TQ_TB2, &tq_56); break; 
-				case 57: lv_img_set_src(TQ_TB2, &tq_57); break; 
-				case 58: lv_img_set_src(TQ_TB2, &tq_58); break; 
-				case 301: lv_img_set_src(TQ_TB2, &tq_301); break; 
-				case 302: lv_img_set_src(TQ_TB2, &tq_302); break; 				
-				default: lv_img_set_src(TQ_TB2, &tq_99); break; 
+                case 0: lv_img_set_src(weather_icon2, &tq_0); break; 
+                case 1: lv_img_set_src(weather_icon2, &tq_1); break; 
+                case 2: lv_img_set_src(weather_icon2, &tq_2); break; 
+				case 3: lv_img_set_src(weather_icon2, &tq_3); break; 
+				case 4: lv_img_set_src(weather_icon2, &tq_4); break; 
+				case 5: lv_img_set_src(weather_icon2, &tq_5); break; 
+				case 6: lv_img_set_src(weather_icon2, &tq_6); break; 
+				case 7: lv_img_set_src(weather_icon2, &tq_7); break; 
+				case 8: lv_img_set_src(weather_icon2, &tq_8); break; 
+				case 9: lv_img_set_src(weather_icon2, &tq_9); break; 
+				case 10: lv_img_set_src(weather_icon2, &tq_10); break; 
+				case 11: lv_img_set_src(weather_icon2, &tq_11); break; 
+				case 12: lv_img_set_src(weather_icon2, &tq_12); break; 
+				case 13: lv_img_set_src(weather_icon2, &tq_13); break; 
+				case 14: lv_img_set_src(weather_icon2, &tq_14); break; 
+				case 15: lv_img_set_src(weather_icon2, &tq_15); break; 
+				case 16: lv_img_set_src(weather_icon2, &tq_16); break; 
+				case 17: lv_img_set_src(weather_icon2, &tq_17); break; 
+				case 18: lv_img_set_src(weather_icon2, &tq_18); break; 
+				case 19: lv_img_set_src(weather_icon2, &tq_19); break; 
+				case 20: lv_img_set_src(weather_icon2, &tq_20); break; 
+				case 21: lv_img_set_src(weather_icon2, &tq_21); break; 
+				case 22: lv_img_set_src(weather_icon2, &tq_22); break; 
+				case 23: lv_img_set_src(weather_icon2, &tq_23); break; 
+				case 24: lv_img_set_src(weather_icon2, &tq_24); break; 
+				case 29: lv_img_set_src(weather_icon2, &tq_29); break; 
+				case 30: lv_img_set_src(weather_icon2, &tq_30); break; 
+				case 31: lv_img_set_src(weather_icon2, &tq_31); break; 
+				case 32: lv_img_set_src(weather_icon2, &tq_32); break; 
+				case 49: lv_img_set_src(weather_icon2, &tq_49); break; 
+				case 53: lv_img_set_src(weather_icon2, &tq_53); break; 
+				case 54: lv_img_set_src(weather_icon2, &tq_54); break; 
+				case 55: lv_img_set_src(weather_icon2, &tq_55); break; 
+				case 56: lv_img_set_src(weather_icon2, &tq_56); break; 
+				case 57: lv_img_set_src(weather_icon2, &tq_57); break; 
+				case 58: lv_img_set_src(weather_icon2, &tq_58); break; 
+				case 301: lv_img_set_src(weather_icon2, &tq_301); break; 
+				case 302: lv_img_set_src(weather_icon2, &tq_302); break; 				
+				default: lv_img_set_src(weather_icon2, &tq_99); break; 
 			}
 
 			i=atoi(weather3.xwtianqi);
 			switch(i)
 			{
-                case 0: lv_img_set_src(TQ_TB3, &tq_0); break; //显示天气图标
-                case 1: lv_img_set_src(TQ_TB3, &tq_1); break; 
-                case 2: lv_img_set_src(TQ_TB3, &tq_2); break; 
-				case 3: lv_img_set_src(TQ_TB3, &tq_3); break; 
-				case 4: lv_img_set_src(TQ_TB3, &tq_4); break; 
-				case 5: lv_img_set_src(TQ_TB3, &tq_5); break; 
-				case 6: lv_img_set_src(TQ_TB3, &tq_6); break; 
-				case 7: lv_img_set_src(TQ_TB3, &tq_7); break; 
-				case 8: lv_img_set_src(TQ_TB3, &tq_8); break; 
-				case 9: lv_img_set_src(TQ_TB3, &tq_9); break;
-				case 10: lv_img_set_src(TQ_TB3, &tq_10); break; 
-				case 11: lv_img_set_src(TQ_TB3, &tq_11); break; 
-				case 12: lv_img_set_src(TQ_TB3, &tq_12); break; 
-				case 13: lv_img_set_src(TQ_TB3, &tq_13); break; 
-				case 14: lv_img_set_src(TQ_TB3, &tq_14); break; 
-				case 15: lv_img_set_src(TQ_TB3, &tq_15); break; 
-				case 16: lv_img_set_src(TQ_TB3, &tq_16); break; 
-				case 17: lv_img_set_src(TQ_TB3, &tq_17); break; 
-				case 18: lv_img_set_src(TQ_TB3, &tq_18); break; 
-				case 19: lv_img_set_src(TQ_TB3, &tq_19); break; 
-				case 20: lv_img_set_src(TQ_TB3, &tq_20); break; 
-				case 21: lv_img_set_src(TQ_TB3, &tq_21); break;
-				case 22: lv_img_set_src(TQ_TB3, &tq_22); break; 
-				case 23: lv_img_set_src(TQ_TB3, &tq_23); break; 
-				case 24: lv_img_set_src(TQ_TB3, &tq_24); break; 
-				case 29: lv_img_set_src(TQ_TB3, &tq_29); break; 
-				case 30: lv_img_set_src(TQ_TB3, &tq_30); break; 
-				case 31: lv_img_set_src(TQ_TB3, &tq_31); break; 
-				case 32: lv_img_set_src(TQ_TB3, &tq_32); break; 
-				case 49: lv_img_set_src(TQ_TB3, &tq_49); break; 
-				case 53: lv_img_set_src(TQ_TB3, &tq_53); break; 
-				case 54: lv_img_set_src(TQ_TB3, &tq_54); break; 
-				case 55: lv_img_set_src(TQ_TB3, &tq_55); break; 
-				case 56: lv_img_set_src(TQ_TB3, &tq_56); break; 
-				case 57: lv_img_set_src(TQ_TB3, &tq_57); break; 
-				case 58: lv_img_set_src(TQ_TB3, &tq_58); break; 
-				case 301: lv_img_set_src(TQ_TB3, &tq_301); break; 
-				case 302: lv_img_set_src(TQ_TB3, &tq_302); break; 			
-				default: lv_img_set_src(TQ_TB3, &tq_99); break;
+                case 0: lv_img_set_src(weather_icon3, &tq_0); break; //显示天气图标
+                case 1: lv_img_set_src(weather_icon3, &tq_1); break; 
+                case 2: lv_img_set_src(weather_icon3, &tq_2); break; 
+				case 3: lv_img_set_src(weather_icon3, &tq_3); break; 
+				case 4: lv_img_set_src(weather_icon3, &tq_4); break; 
+				case 5: lv_img_set_src(weather_icon3, &tq_5); break; 
+				case 6: lv_img_set_src(weather_icon3, &tq_6); break; 
+				case 7: lv_img_set_src(weather_icon3, &tq_7); break; 
+				case 8: lv_img_set_src(weather_icon3, &tq_8); break; 
+				case 9: lv_img_set_src(weather_icon3, &tq_9); break;
+				case 10: lv_img_set_src(weather_icon3, &tq_10); break; 
+				case 11: lv_img_set_src(weather_icon3, &tq_11); break; 
+				case 12: lv_img_set_src(weather_icon3, &tq_12); break; 
+				case 13: lv_img_set_src(weather_icon3, &tq_13); break; 
+				case 14: lv_img_set_src(weather_icon3, &tq_14); break; 
+				case 15: lv_img_set_src(weather_icon3, &tq_15); break; 
+				case 16: lv_img_set_src(weather_icon3, &tq_16); break; 
+				case 17: lv_img_set_src(weather_icon3, &tq_17); break; 
+				case 18: lv_img_set_src(weather_icon3, &tq_18); break; 
+				case 19: lv_img_set_src(weather_icon3, &tq_19); break; 
+				case 20: lv_img_set_src(weather_icon3, &tq_20); break; 
+				case 21: lv_img_set_src(weather_icon3, &tq_21); break;
+				case 22: lv_img_set_src(weather_icon3, &tq_22); break; 
+				case 23: lv_img_set_src(weather_icon3, &tq_23); break; 
+				case 24: lv_img_set_src(weather_icon3, &tq_24); break; 
+				case 29: lv_img_set_src(weather_icon3, &tq_29); break; 
+				case 30: lv_img_set_src(weather_icon3, &tq_30); break; 
+				case 31: lv_img_set_src(weather_icon3, &tq_31); break; 
+				case 32: lv_img_set_src(weather_icon3, &tq_32); break; 
+				case 49: lv_img_set_src(weather_icon3, &tq_49); break; 
+				case 53: lv_img_set_src(weather_icon3, &tq_53); break; 
+				case 54: lv_img_set_src(weather_icon3, &tq_54); break; 
+				case 55: lv_img_set_src(weather_icon3, &tq_55); break; 
+				case 56: lv_img_set_src(weather_icon3, &tq_56); break; 
+				case 57: lv_img_set_src(weather_icon3, &tq_57); break; 
+				case 58: lv_img_set_src(weather_icon3, &tq_58); break; 
+				case 301: lv_img_set_src(weather_icon3, &tq_301); break; 
+				case 302: lv_img_set_src(weather_icon3, &tq_302); break; 			
+				default: lv_img_set_src(weather_icon3, &tq_99); break;
 			}
 
 			for(int countdown = 360; countdown >= 0; countdown--) {
@@ -1013,7 +1013,7 @@ static void get_lunar_task(void * pvParameters)
 				st=NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  
-				lv_label_set_text(label4, st1); //文本显示位置信息
+				lv_label_set_text(location_label, st1); //文本显示位置信息
 				//printf("城市=%s\n",st1);	 
 				st1=NULL;  //将ST1置空
 			}
@@ -1025,8 +1025,8 @@ static void get_lunar_task(void * pvParameters)
 				st=NULL;
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  
-				T_cspy = st1;
-				//printf("城市拼音=%s\n",T_cspy);	 
+				t_city_py = st1;
+				//printf("城市拼音=%s\n",t_city_py);	 
 				if(rwbz) {  
 					rwbz=0;  
 					xTaskCreate(get_city_code_task, "get_city_code_task", 1024*4, NULL, 1, NULL);  //创建动态任务-网络获得城市代码任务   只创建一次
@@ -1113,8 +1113,8 @@ static void get_city_code_task(void * pvParameters)
     int s, r;
     char recv_buf[512];  //512字节的网页数据缓冲区
 
-	strcat(cspy2, T_cspy);
-	strcat(cspy2, REQUEST1);
+	strcat(city_py, t_city_py);
+	strcat(city_py, REQUEST1);
 
     while(1) {
         int err = getaddrinfo(WEB_SERVER1, "80", &hints, &res);  //自动生成这些参数
@@ -1147,7 +1147,7 @@ static void get_city_code_task(void * pvParameters)
         ESP_LOGI(TAG, "... connected");
         freeaddrinfo(res);
 
-        if (write(s, T_cspy2, strlen(T_cspy2)) < 0) {
+        if (write(s, t_city_py_2, strlen(t_city_py_2)) < 0) {
             ESP_LOGE(TAG, "... socket send failed");
             close(s);
             vTaskDelay(4000 / portTICK_PERIOD_MS);
@@ -1177,8 +1177,8 @@ static void get_city_code_task(void * pvParameters)
 			}
 			if(st1!=NULL&&st1!=ESP_OK){  //如果ST1不为空并且ST1不为OK  --正常时
 				//printf("城市代码=%s\n",st1);	
-				T_csdm = st1;  //城市代码  指针地址赋值 到另一个指针变量的地址
-				//printf("T_csdm=%s\n",T_csdm);	
+				t_city_code = st1;  //城市代码  指针地址赋值 到另一个指针变量的地址
+				//printf("t_city_code=%s\n",t_city_code);	
 				xTaskCreatePinnedToCore(get_weather_task, "get_weather_task", 1024*8, NULL, 1, &xHandle_task2, tskNO_AFFINITY);  //初始化显示以及开机界面
 				vTaskSuspend(xHandle_task1);  //挂起任务1
 				vTaskDelete(NULL); 
@@ -1212,7 +1212,7 @@ static void get_weather_task(void * pvParameters)
 
     char recv_buf[1263];  //512字节的网页数据缓冲区  356
     char *T_buf=NULL;
-	strcat(p, T_csdm);  
+	strcat(p, t_city_code);  
 	strcat(p, REQUEST2); 
 
 	//内容开头

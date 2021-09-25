@@ -10,6 +10,16 @@
 #include <Wire.h>
 #endif
 
+#if CONFIG_FREERTOS_UNICORE
+#define ARDUINO_RUNNING_CORE 0
+#else
+#define ARDUINO_RUNNING_CORE 1
+#endif
+
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2
+#endif
+
 #define SUN  0
 #define SUN_CLOUD  1
 #define CLOUD 2
@@ -22,12 +32,16 @@ const char* ssid       = "xiongda";
 const char* password   = "15999554794";
 
 const char* ntpServer     = "pool.ntp.org";
-const long  gmtOffset_sec = 3600 * 8;
-const char* localDate;
-const char* localTime;
+const long gmtOffset_sec = 3600 * 8;
+
+struct {
+  char *localDate;
+  char *localTime;
+} now;
 
 int minute;
-int flag = 0;
+int initFlag = 0;
+int updateFlag = 0;
 
 const char* host   = "www.weather.com.cn";
 const int httpPort = 80;
@@ -38,8 +52,58 @@ String highStart   = "<span>";
 String highEnd     = "</span>";
 String lowStart    = "<i>";
 String lowEnd      = "℃</i>";
-String wea,high,low;
-uint8_t symbol;
+
+struct {
+  String wea;
+  String high;
+  String low;
+  uint8_t symbol;
+  char *weaStr;
+} weather;
+
+TaskHandle_t xHandle_update_data = NULL;
+
+// 定义任务
+/**
+ * @brief 闪灯任务
+ * 
+ * @param pvParameters 
+ */
+void TaskBlink(void *pvParameters);
+
+/**
+ * @brief 联网更新数据(天气数据、时间同步)
+ * 
+ * @param pvParameters 
+ */
+void TaskUpdateData(void *pvParameters);
+
+/**
+ * @brief 显示时间
+ * 
+ * @param pvParameters 
+ */
+void TaskDrawLocalTime(void *pvParameters);
+
+/**
+ * @brief 唤醒联网更新任务
+ * 
+ * @param pvParameters 
+ */
+void TaskUpdateWeather(void *pvParameters);
+
+void TaskBlink(void *pvParameters) {
+  (void) pvParameters;
+
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  for (;;) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    vTaskDelay(1000);
+    digitalWrite(LED_BUILTIN, LOW);
+    vTaskDelay(1000);
+  }
+}
 
 void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol) {
   // fonts used:
@@ -50,55 +114,26 @@ void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol) {
   switch(symbol)
   {
     case SUN:
-      u8g2.setFont(u8g2_font_open_iconic_weather_6x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 69);  
       break;
     case SUN_CLOUD:
-      u8g2.setFont(u8g2_font_open_iconic_weather_6x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 65); 
       break;
     case CLOUD:
-      u8g2.setFont(u8g2_font_open_iconic_weather_6x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 64); 
       break;
     case RAIN:
-      u8g2.setFont(u8g2_font_open_iconic_weather_6x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 67); 
       break;
     case THUNDER:
-      u8g2.setFont(u8g2_font_open_iconic_embedded_6x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 67);
       break;      
   }
-}
-
-void drawWeather(uint8_t symbol, int degree, int degreeHigh, int x) {
-  drawWeatherSymbol(x, 48, symbol);
-
-  int offset = 0;
-  if (degreeHigh == 0) {
-    u8g2.setFont(u8g2_font_logisoso32_tf);
-    offset = 10;
-  } else {
-    u8g2.setFont(u8g2_font_logisoso16_tf);
-  }
-  u8g2.setCursor(48 + 3 + x, 32 + offset);
-  u8g2.print(degree);
-  if (degreeHigh != 0) {
-    u8g2.print("~");
-    u8g2.print(degreeHigh);
-  }
-  u8g2.print("°C");
-}
-
-void draw(const char *s, int degree, int degreeHigh, int x){
-  int16_t len = strlen(s);
-  u8g2.firstPage();
-  do {
-    drawWeather(symbol, degree, degreeHigh, x);
-    u8g2.setFont(u8g2_font_wqy12_t_gb2312);
-    u8g2.drawUTF8((60 - 2*len) + x, 62, s);
-  } while ( u8g2.nextPage() );
 }
 
 void getSymbol(String wea) {
@@ -107,21 +142,21 @@ void getSymbol(String wea) {
   String thunder = "雷";
   
   if (wea.indexOf(rain) != -1) {
-    symbol = RAIN;
+    weather.symbol = RAIN;
     return;
   }
 
   if (wea.indexOf(thunder) != -1) {
-    symbol = THUNDER;
+    weather.symbol = THUNDER;
     return;
   }
 
   if (wea.indexOf(cloud) != -1) {
-    symbol = CLOUD;
+    weather.symbol = CLOUD;
     return;
   }
 
-  symbol = SUN;
+  weather.symbol = SUN;
 }
 
 void readWea(WiFiClient client) {
@@ -129,12 +164,15 @@ void readWea(WiFiClient client) {
   client.readStringUntil('\n');
   String line = client.readStringUntil('\n');
   Serial.println(line);
-  wea = line.substring(line.indexOf(weaStart) + 10, line.indexOf(weaEnd)); 
+  weather.wea = line.substring(line.indexOf(weaStart) + 10, line.indexOf(weaEnd)); 
   client.readStringUntil('\n');
   line = client.readStringUntil('\n');
   Serial.println(line);
-  high = line.substring(line.indexOf(highStart) + 6, line.indexOf(highEnd));
-  low = line.substring(line.indexOf(lowStart) + 3, line.indexOf(lowEnd) + 1);    
+  weather.high = line.substring(line.indexOf(highStart) + 6, line.indexOf(highEnd));
+  weather.low = line.substring(line.indexOf(lowStart) + 3, line.indexOf(lowEnd));
+
+  weather.weaStr = (char *) malloc(strlen(weather.high.c_str()) + strlen(weather.low.c_str()) + 3);
+  sprintf(weather.weaStr, "%s-%s°C", weather.low, weather.high);
 }
 
 void getWeather() {
@@ -173,7 +211,7 @@ void getWeather() {
     }
   }
 
-  getSymbol(wea);
+  getSymbol(weather.wea);
 
   Serial.println();
   Serial.println("closing connection");
@@ -187,12 +225,14 @@ int initLocalTime(){
   }
 
   char *ld = (char *) malloc(10);
-  sprintf(ld, "%d-%02d-%02d", (timeinfo.tm_year + 1900), (timeinfo.tm_mon + 1), timeinfo.tm_mday);
-  localDate = ld;
+  sprintf(ld, "%d.%02d.%02d", (timeinfo.tm_year + 1900), (timeinfo.tm_mon + 1), timeinfo.tm_mday);
+  now.localDate = ld;
 
   char *lt = (char *) malloc(8);
   sprintf(lt, "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-  localTime = lt;
+  now.localTime = lt;
+
+  minute = timeinfo.tm_min;
 
   return 1;
 }
@@ -205,8 +245,7 @@ void connectWiFi() {
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
+      vTaskDelay(300);
   }
 
   Serial.println("");
@@ -222,28 +261,86 @@ void closeWiFi() {
   Serial.println("closing wifi");
 }
 
-void drawLocalTime(int x) {
+void drawLocalTime() {
   initLocalTime();
   u8g2.firstPage();
   do {
-    u8g2.setFont(u8g2_font_crox3h_tr);
-    u8g2.drawStr(20 + x, 20, localDate);
-    u8g2.setFont(u8g2_font_lubB14_tr);
-    u8g2.drawStr(20 + x, 47, localTime);
-    u8g2.drawFrame(0, 0, 128, 64);
+    u8g2.setFont(u8g2_font_7x14_tf);
+    u8g2.drawUTF8(25, 12, weather.weaStr);
+    drawWeatherSymbol(1, 15, weather.symbol);
+
+    u8g2.setFont(u8g2_font_lubB18_tr);
+    u8g2.drawStr(12, 43, now.localTime);
+
+    u8g2.setFont(u8g2_font_profont11_tr);
+    u8g2.drawStr(68, 60, now.localDate);
   } while (u8g2.nextPage());
 }
 
-void updteWeather() {
-  if (minute == 0 && flag == 0) {
-    Serial.println("update weather");
+void TaskUpdateData(void *pvParameters) {
+  (void) pvParameters;
+
+  for (;;) {
     connectWiFi();
+
+    int t = 0;
+    do {
+      configTime(gmtOffset_sec, 0, ntpServer);
+      vTaskDelay(200);
+      t = initLocalTime();
+    } while (t == 0);
+    Serial.println("config time finish!");
+
     getWeather();
+    Serial.println("getWeather finish!");
+
     closeWiFi();
-    flag = 1;
+
+    initFlag = 1;
+
+    vTaskSuspend(xHandle_update_data);
   }
-  if (minute != 0) {
-    flag = 0;
+}
+
+void TaskDrawLocalTime(void *pvParameters) {
+  (void) pvParameters;
+
+  while(initFlag == 0) {
+    vTaskDelay(200);
+  }
+
+  while (1) {
+    initLocalTime();
+    u8g2.firstPage();
+    do {
+      u8g2.setFont(u8g2_font_7x14_tf);
+      u8g2.drawUTF8(25, 12, weather.weaStr);
+      drawWeatherSymbol(1, 15, weather.symbol);
+
+      u8g2.setFont(u8g2_font_lubB18_tr);
+      u8g2.drawStr(12, 43, now.localTime);
+
+      u8g2.setFont(u8g2_font_profont11_tr);
+      u8g2.drawStr(68, 60, now.localDate);
+    } while (u8g2.nextPage());
+    vTaskDelay(200);
+  }
+}
+
+void TaskUpdateWeather(void *pvParameters) {
+  (void) pvParameters;
+
+  for (;;) {
+    if (minute == 0 && updateFlag == 0) {
+      Serial.println("resume update data");
+      vTaskResume(xHandle_update_data);
+    }
+
+    if (minute != 0) {
+      updateFlag = 1;
+    }
+
+    vTaskDelay(500);
   }
 }
 
@@ -252,51 +349,16 @@ void setup() {
 
   u8g2.begin();
   u8g2.enableUTF8Print();
-  
-  int t = 0;
-  do {
-    connectWiFi();
-  
-    configTime(gmtOffset_sec, 0, ntpServer);
-    delay(200);
-    t = initLocalTime();
-  } while (t == 0);
 
-  getWeather();
+  xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  
+  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 2, NULL, 5, &xHandle_update_data, ARDUINO_RUNNING_CORE);
 
-  closeWiFi();
+  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 2, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
+
+  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 }
 
-int frame = 0;
-int dr = 0;
-int dr_t = 0;
 void loop() {
-  delay(1000);
-  
-  if (frame++ <= 10) {
-    if (dr_t == 0) {
-      for(int x = 80; x >= 0; x-=5) {
-        drawLocalTime(x);
-      }
-      dr_t = 1;
-    } else {
-      drawLocalTime(0);
-    }
-  
-    dr = 0;
-  } else {
-    if (dr == 0) {
-      for(int x = 80; x > 0; x-=5) {
-        draw(wea.c_str(), atoi(low.c_str()), atoi(high.c_str()), x);
-      }
-      dr = 1;
-    }
-  }
-  if (frame % 14 == 0) {
-    frame = 0;
-    dr_t = 0;
-  }
 
-  // 每小时更新天气
-  updteWeather();
 }
