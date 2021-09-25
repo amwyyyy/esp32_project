@@ -256,22 +256,6 @@ void closeWiFi() {
   Serial.println("closing wifi");
 }
 
-void drawLocalTime() {
-  initLocalTime();
-  u8g2.firstPage();
-  do {
-    u8g2.setFont(u8g2_font_7x14_tf);
-    u8g2.drawUTF8(25, 12, weather.weaStr);
-    drawWeatherSymbol(1, 16, weather.symbol);
-
-    u8g2.setFont(u8g2_font_lubB18_tr);
-    u8g2.drawStr(12, 43, now.localTime);
-
-    u8g2.setFont(u8g2_font_profont11_tr);
-    u8g2.drawStr(68, 60, now.localDate);
-  } while (u8g2.nextPage());
-}
-
 void TaskUpdateData(void *pvParameters) {
   (void) pvParameters;
 
@@ -309,20 +293,19 @@ void TaskDrawLocalTime(void *pvParameters) {
     u8g2.firstPage();
     do {
       u8g2.setFont(u8g2_font_7x14_tf);
-      u8g2.drawUTF8(25, 14, weather.weaStr);
-      drawWeatherSymbol(1, 15, weather.symbol);
+      u8g2.drawUTF8(20, 58, weather.weaStr);
+      drawWeatherSymbol(1, 60, weather.symbol);
 
       u8g2.setFont(u8g2_font_lubB18_tr);
-      u8g2.drawStr(12, 43, now.localTime);
+      u8g2.drawStr(12, 40, now.localTime);
 
       u8g2.setFont(u8g2_font_profont11_tr);
       u8g2.drawStr(68, 60, now.localDate);
 
-      u8g2.setFont(u8g2_font_profont11_tr);
-
-     char *temper = (char *) malloc(6);
-     sprintf(temper, "%0.1f°C", newValues.temperature);
-     u8g2.drawUTF8(3, 60, temper);
+      u8g2.setFont(u8g2_font_profont11_tf);
+      char *temper = (char *) malloc(11);
+      sprintf(temper, "%0.1f°C  %0.0f%%", newValues.temperature, newValues.humidity);
+      u8g2.drawUTF8(3, 12, temper);
     } while (u8g2.nextPage());
     vTaskDelay(200);
   }
