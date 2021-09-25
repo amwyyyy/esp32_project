@@ -2,6 +2,7 @@
 #include "time.h"
 #include <Arduino.h>
 #include <U8g2lib.h>
+#include <DHTesp.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -43,6 +44,7 @@ int minute;
 int initFlag = 0;
 int updateFlag = 0;
 
+// 天气相关变量
 const char* host   = "www.weather.com.cn";
 const int httpPort = 80;
 String day         = "（今天）";
@@ -63,34 +65,22 @@ struct {
 
 TaskHandle_t xHandle_update_data = NULL;
 
+// 温湿度相关
+DHTesp dht;
+int dhtPin = 4;
+TempAndHumidity newValues = {.temperature=0.0, .humidity=0.0};
+
 // 定义任务
-/**
- * @brief 闪灯任务
- * 
- * @param pvParameters 
- */
+// 闪灯任务
 void TaskBlink(void *pvParameters);
-
-/**
- * @brief 联网更新数据(天气数据、时间同步)
- * 
- * @param pvParameters 
- */
+// 联网更新数据(天气数据、时间同步)
 void TaskUpdateData(void *pvParameters);
-
-/**
- * @brief 显示时间
- * 
- * @param pvParameters 
- */
+// 显示时间
 void TaskDrawLocalTime(void *pvParameters);
-
-/**
- * @brief 唤醒联网更新任务
- * 
- * @param pvParameters 
- */
+// 唤醒联网更新任务
 void TaskUpdateWeather(void *pvParameters);
+// 获取温湿度任务
+void TaskGetTemperature(void *pvParameters);
 
 void TaskBlink(void *pvParameters) {
   (void) pvParameters;
@@ -171,8 +161,13 @@ void readWea(WiFiClient client) {
   weather.high = line.substring(line.indexOf(highStart) + 6, line.indexOf(highEnd));
   weather.low = line.substring(line.indexOf(lowStart) + 3, line.indexOf(lowEnd));
 
-  weather.weaStr = (char *) malloc(strlen(weather.high.c_str()) + strlen(weather.low.c_str()) + 3);
-  sprintf(weather.weaStr, "%s-%s°C", weather.low, weather.high);
+  if (atoi(weather.high.c_str()) == 0) {
+    weather.weaStr = (char *) malloc(strlen(weather.low.c_str()) + 2);
+    sprintf(weather.weaStr, "%s°C", weather.low);
+  } else {
+    weather.weaStr = (char *) malloc(strlen(weather.high.c_str()) + strlen(weather.low.c_str()) + 3);
+    sprintf(weather.weaStr, "%s-%s°C", weather.low, weather.high);
+  }
 }
 
 void getWeather() {
@@ -267,7 +262,7 @@ void drawLocalTime() {
   do {
     u8g2.setFont(u8g2_font_7x14_tf);
     u8g2.drawUTF8(25, 12, weather.weaStr);
-    drawWeatherSymbol(1, 15, weather.symbol);
+    drawWeatherSymbol(1, 16, weather.symbol);
 
     u8g2.setFont(u8g2_font_lubB18_tr);
     u8g2.drawStr(12, 43, now.localTime);
@@ -314,7 +309,7 @@ void TaskDrawLocalTime(void *pvParameters) {
     u8g2.firstPage();
     do {
       u8g2.setFont(u8g2_font_7x14_tf);
-      u8g2.drawUTF8(25, 12, weather.weaStr);
+      u8g2.drawUTF8(25, 14, weather.weaStr);
       drawWeatherSymbol(1, 15, weather.symbol);
 
       u8g2.setFont(u8g2_font_lubB18_tr);
@@ -322,6 +317,12 @@ void TaskDrawLocalTime(void *pvParameters) {
 
       u8g2.setFont(u8g2_font_profont11_tr);
       u8g2.drawStr(68, 60, now.localDate);
+
+      u8g2.setFont(u8g2_font_profont11_tr);
+
+     char *temper = (char *) malloc(6);
+     sprintf(temper, "%0.1f°C", newValues.temperature);
+     u8g2.drawUTF8(3, 60, temper);
     } while (u8g2.nextPage());
     vTaskDelay(200);
   }
@@ -331,9 +332,10 @@ void TaskUpdateWeather(void *pvParameters) {
   (void) pvParameters;
 
   for (;;) {
-    if (minute == 0 && updateFlag == 0) {
+    if (minute == 0 && updateFlag == 1) {
       Serial.println("resume update data");
       vTaskResume(xHandle_update_data);
+      updateFlag = 0;
     }
 
     if (minute != 0) {
@@ -344,11 +346,25 @@ void TaskUpdateWeather(void *pvParameters) {
   }
 }
 
+void TaskGetTemperature(void *pvParameters) {
+  for(;;) {
+    newValues = dht.getTempAndHumidity();
+    if (dht.getStatus() != 0) {
+      Serial.println("DHT11 error status: " + String(dht.getStatusString()));
+      vTaskDelay(500);
+      continue;
+    }
+    vTaskDelay(1000 * 10);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
   u8g2.begin();
   u8g2.enableUTF8Print();
+
+  dht.setup(dhtPin, DHTesp::DHT11);
 
   xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
   
@@ -357,6 +373,8 @@ void setup() {
   xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 2, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
 
   xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+
+  xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {
