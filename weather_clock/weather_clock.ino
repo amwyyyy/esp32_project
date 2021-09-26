@@ -32,17 +32,21 @@ U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 const char* ssid       = "xiongda";
 const char* password   = "15999554794";
 
-const char* ntpServer    = "cn.pool.ntp.org";
+const char* ntpServer    = "ntp.aliyun.com";
 const long gmtOffset_sec = 3600 * 8;
 
 struct {
-  char *localDate;
-  char *localTime;
+  int year;
+  int month;
+  int day;
+  int hour;
+  int minute;
+  int second;
 } now;
 
-int minute;
 int initFlag = 0;
 int updateFlag = 0;
+int viewFlag = 0;
 
 // 天气相关变量
 const char* host   = "www.weather.com.cn";
@@ -60,7 +64,6 @@ struct {
   String high;
   String low;
   uint8_t symbol;
-  char *weaStr;
 } weather;
 
 TaskHandle_t xHandle_update_data = NULL;
@@ -81,6 +84,8 @@ void TaskDrawLocalTime(void *pvParameters);
 void TaskUpdateWeather(void *pvParameters);
 // 获取温湿度任务
 void TaskGetTemperature(void *pvParameters);
+// 切换温度天气显示
+void TaskChangeView(void *pvParameters);
 // 系统初始化显示信息
 void TaskInitDisplay(void *pvParameters);
 
@@ -106,23 +111,23 @@ void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol) {
   switch(symbol)
   {
     case SUN:
-      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
       u8g2.drawGlyph(x, y, 69);  
       break;
     case SUN_CLOUD:
-      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
       u8g2.drawGlyph(x, y, 65); 
       break;
     case CLOUD:
-      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
       u8g2.drawGlyph(x, y, 64); 
       break;
     case RAIN:
-      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
       u8g2.drawGlyph(x, y, 67); 
       break;
     case THUNDER:
-      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
       u8g2.drawGlyph(x, y, 67);
       break;      
   }
@@ -162,14 +167,6 @@ void readWea(WiFiClient client) {
   Serial.println(line);
   weather.high = line.substring(line.indexOf(highStart) + 6, line.indexOf(highEnd));
   weather.low = line.substring(line.indexOf(lowStart) + 3, line.indexOf(lowEnd));
-
-  if (atoi(weather.high.c_str()) == 0) {
-    weather.weaStr = (char *) malloc(strlen(weather.low.c_str()) + 2);
-    sprintf(weather.weaStr, "%s°C", weather.low);
-  } else {
-    weather.weaStr = (char *) malloc(strlen(weather.high.c_str()) + strlen(weather.low.c_str()) + 3);
-    sprintf(weather.weaStr, "%s-%s°C", weather.low, weather.high);
-  }
 }
 
 void getWeather() {
@@ -221,15 +218,12 @@ int initLocalTime(){
     return 0;
   }
 
-  char *ld = (char *) malloc(10);
-  sprintf(ld, "%d.%02d.%02d", (timeinfo.tm_year + 1900), (timeinfo.tm_mon + 1), timeinfo.tm_mday);
-  now.localDate = ld;
-
-  char *lt = (char *) malloc(8);
-  sprintf(lt, "%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-  now.localTime = lt;
-
-  minute = timeinfo.tm_min;
+  now.year = timeinfo.tm_year + 1900;
+  now.month = timeinfo.tm_mon + 1;
+  now.day = timeinfo.tm_mday;
+  now.hour = timeinfo.tm_hour;
+  now.minute = timeinfo.tm_min;
+  now.second = timeinfo.tm_sec;
 
   return 1;
 }
@@ -289,24 +283,42 @@ void TaskDrawLocalTime(void *pvParameters) {
     vTaskDelay(200);
   }
 
+  // 接收格式化字符串
+  char *ld     = (char *) malloc(11);
+  char *lt     = (char *) malloc(10);
+  char *temper = (char *) malloc(6);
+  char *humid  = (char *) malloc(5);
+  char *weaStr = (char *) malloc(11);
+
   while (1) {
     initLocalTime();
     u8g2.firstPage();
     do {
-      u8g2.setFont(u8g2_font_7x14_tf);
-      u8g2.drawUTF8(20, 58, weather.weaStr);
-      drawWeatherSymbol(1, 60, weather.symbol);
+      if (viewFlag) {
+        if (atoi(weather.high.c_str()) == 0) {
+          sprintf(weaStr, "%s°C", weather.low);
+        } else {
+          sprintf(weaStr, "%s/%s°C", weather.low, weather.high);
+        }
+        u8g2.setFont(u8g2_font_profont11_tf);
+        u8g2.drawUTF8(15, 12, weaStr);
+        drawWeatherSymbol(1, 12, weather.symbol);
+      } else {
+        u8g2.setFont(u8g2_font_profont11_tf);
+        sprintf(temper, "%0.1f°C", newValues.temperature);
+        u8g2.drawUTF8(3, 12, temper);
+      
+        sprintf(humid, " / %0.0f%%", newValues.humidity);
+        u8g2.drawUTF8(40, 12, humid);
+      }
 
       u8g2.setFont(u8g2_font_lubB18_tr);
-      u8g2.drawStr(12, 40, now.localTime);
+      sprintf(lt, "%02d:%02d:%02d", now.hour, now.minute, now.second);
+      u8g2.drawStr(12, 40, lt);
 
       u8g2.setFont(u8g2_font_profont11_tr);
-      u8g2.drawStr(68, 60, now.localDate);
-
-      u8g2.setFont(u8g2_font_profont11_tf);
-      char *temper = (char *) malloc(11);
-      sprintf(temper, "%0.1f°C  %0.0f%%", newValues.temperature, newValues.humidity);
-      u8g2.drawUTF8(3, 12, temper);
+      sprintf(ld, "%d.%02d.%02d", now.year, now.month, now.day);
+      u8g2.drawStr(68, 60, ld);
     } while (u8g2.nextPage());
     vTaskDelay(200);
   }
@@ -316,13 +328,13 @@ void TaskUpdateWeather(void *pvParameters) {
   (void) pvParameters;
 
   for (;;) {
-    if (minute == 0 && updateFlag == 1) {
+    if (now.minute == 0 && updateFlag == 1) {
       Serial.println("resume update data");
       vTaskResume(xHandle_update_data);
       updateFlag = 0;
     }
 
-    if (minute != 0) {
+    if (now.minute != 0) {
       updateFlag = 1;
     }
 
@@ -353,6 +365,13 @@ void TaskInitDisplay(void *pvParameters) {
   }
 }
 
+void TaskChangeView(void *pvParameters) {
+  for (;;) {
+    viewFlag = !viewFlag;
+    vTaskDelay(5000);  
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -361,17 +380,19 @@ void setup() {
 
   dht.setup(dhtPin, DHTesp::DHT11);
 
-  xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024 * 2, NULL, 5, NULL, ARDUINO_RUNNING_CORE);
   
-  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 2, NULL, 0, &xHandle_update_data, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 8, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
-
+  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
+  
   xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskInitDisplay, "TaskInitDisplay", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
+
+//   xTaskCreatePinnedToCore(TaskInitDisplay, "TaskInitDisplay", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {
