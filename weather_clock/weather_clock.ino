@@ -21,18 +21,18 @@
 #define LED_BUILTIN 2
 #endif
 
-#define SUN  0
-#define SUN_CLOUD  1
-#define CLOUD 2
-#define RAIN 3
-#define THUNDER 4
+#define SUN       0
+#define SUN_CLOUD 1
+#define CLOUD     2
+#define RAIN      3
+#define THUNDER   4
 
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);     
 
 const char* ssid       = "xiongda";
 const char* password   = "15999554794";
 
-const char* ntpServer     = "pool.ntp.org";
+const char* ntpServer    = "cn.pool.ntp.org";
 const long gmtOffset_sec = 3600 * 8;
 
 struct {
@@ -81,6 +81,8 @@ void TaskDrawLocalTime(void *pvParameters);
 void TaskUpdateWeather(void *pvParameters);
 // 获取温湿度任务
 void TaskGetTemperature(void *pvParameters);
+// 系统初始化显示信息
+void TaskInitDisplay(void *pvParameters);
 
 void TaskBlink(void *pvParameters) {
   (void) pvParameters;
@@ -243,7 +245,6 @@ void connectWiFi() {
       vTaskDelay(300);
   }
 
-  Serial.println("");
   Serial.print("WiFi connected. ");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -341,6 +342,17 @@ void TaskGetTemperature(void *pvParameters) {
   }
 }
 
+void TaskInitDisplay(void *pvParameters) {
+  while (initFlag == 0) {
+    u8g2.firstPage();
+    do {
+      u8g2.setFont(u8g2_font_7x14_tf);
+      u8g2.drawStr(20, 20, "System init.");
+    } while (u8g2.nextPage());
+    vTaskDelay(1000);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -349,15 +361,17 @@ void setup() {
 
   dht.setup(dhtPin, DHTesp::DHT11);
 
-  xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
   
-  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 2, NULL, 5, &xHandle_update_data, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 2, NULL, 0, &xHandle_update_data, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 2, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
+
+  xTaskCreatePinnedToCore(TaskInitDisplay, "TaskInitDisplay", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {

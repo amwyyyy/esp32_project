@@ -1,0 +1,13 @@
+cmake_minimum_required(VERSION 2.6)
+
+PROJECT(myapp)
+
+INCLUDE_DIRECTORIES(
+    include
+)
+
+AUX_SOURCE_DIRECTORY(src DIR_SRCS)
+
+SET(TEST_MATH ${DIR_SRCS})
+
+ADD_EXECUTABLE(${PROJECT_NAME} ${TEST_MATH})

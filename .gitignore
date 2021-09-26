@@ -49,3 +49,7 @@ build
 
 # lock files for examples and components
 dependencies.lock
+
+CMakeFiles/
+*.cmake
+CMakeCache.txt

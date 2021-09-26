@@ -1650,7 +1650,7 @@ void draw_img(void)
 void app_main()
 {
 	ESP_LOGI(TAG, "\nAPP is start!~\n");
-	ESP_ERROR_CHECK( nvs_flash_init() );  //初始化存储
+	ESP_ERROR_CHECK(nvs_flash_init());  //初始化存储
     ESP_ERROR_CHECK(esp_netif_init());  //初始化网络接口
 
     /* 初始化非易失性存储库 (NVS) */
@@ -1671,16 +1671,15 @@ void app_main()
     ESP_ERROR_CHECK( nvs_open("WiFi_cfg", NVS_READWRITE, &wificfg_nvs_handler1) );
 
     uint32_t wifi_update = 0;
-    err = nvs_get_u32(wificfg_nvs_handler1,"wifi_update",&wifi_update);
-    if(MY_WIFI_UPDATE == wifi_update )
-        ESP_LOGI(TAG,"wifi_cfg needn't to update. \n");
-    else
-    {
-        ESP_LOGI(TAG,"wifi_cfg update now... \n");
-        ESP_ERROR_CHECK( nvs_set_str(wificfg_nvs_handler1,"wifi_ssid",MY_WIFI_SSID) );
-        ESP_ERROR_CHECK( nvs_set_str(wificfg_nvs_handler1,"wifi_passwd",MY_WIFI_PASSWD) ); 
-        ESP_ERROR_CHECK( nvs_set_u32(wificfg_nvs_handler1,"wifi_update",MY_WIFI_UPDATE) );
-        ESP_LOGI(TAG,"wifi_cfg update ok. \n");
+    err = nvs_get_u32(wificfg_nvs_handler1, "wifi_update", &wifi_update);
+    if(MY_WIFI_UPDATE == wifi_update ) {
+        ESP_LOGI(TAG, "wifi_cfg needn't to update. \n");
+	} else {
+        ESP_LOGI(TAG, "wifi_cfg update now... \n");
+        ESP_ERROR_CHECK( nvs_set_str(wificfg_nvs_handler1, "wifi_ssid", MY_WIFI_SSID) );
+        ESP_ERROR_CHECK( nvs_set_str(wificfg_nvs_handler1, "wifi_passwd", MY_WIFI_PASSWD) ); 
+        ESP_ERROR_CHECK( nvs_set_u32(wificfg_nvs_handler1, "wifi_update", MY_WIFI_UPDATE) );
+        ESP_LOGI(TAG, "wifi_cfg update ok. \n");
     }
     ESP_ERROR_CHECK( nvs_commit(wificfg_nvs_handler1) ); /* 提交 */
     nvs_close(wificfg_nvs_handler1);                     /* 关闭 */
@@ -1705,9 +1704,9 @@ void app_main()
     /* 打开一个NVS命名空间 */
     ESP_ERROR_CHECK( nvs_open("WiFi_cfg", NVS_READWRITE, &wificfg_nvs_handler) );
     len = sizeof(wifi_ssid);    /* 从NVS中获取ssid */
-    ESP_ERROR_CHECK( nvs_get_str(wificfg_nvs_handler,"wifi_ssid",wifi_ssid,&len) );
+    ESP_ERROR_CHECK( nvs_get_str(wificfg_nvs_handler, "wifi_ssid", wifi_ssid, &len) );
     len = sizeof(wifi_passwd);      /* 从NVS中获取passwd */
-    ESP_ERROR_CHECK( nvs_get_str(wificfg_nvs_handler,"wifi_passwd",wifi_passwd,&len) );
+    ESP_ERROR_CHECK( nvs_get_str(wificfg_nvs_handler, "wifi_passwd", wifi_passwd, &len) );
     ESP_ERROR_CHECK( nvs_commit(wificfg_nvs_handler) ); /* 提交 */
     nvs_close(wificfg_nvs_handler);                     /* 关闭 */
     /* 设置WiFi连接的ssid和password参数 */
