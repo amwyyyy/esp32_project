@@ -86,8 +86,6 @@ void TaskUpdateWeather(void *pvParameters);
 void TaskGetTemperature(void *pvParameters);
 // 切换温度天气显示
 void TaskChangeView(void *pvParameters);
-// 系统初始化显示信息
-void TaskInitDisplay(void *pvParameters);
 
 void TaskBlink(void *pvParameters) {
   (void) pvParameters;
@@ -280,6 +278,11 @@ void TaskDrawLocalTime(void *pvParameters) {
   (void) pvParameters;
 
   while(initFlag == 0) {
+    u8g2.firstPage();
+    do {
+      u8g2.setFont(u8g2_font_7x14_tr);
+      u8g2.drawStr(20, 20, "System init.");
+    } while (u8g2.nextPage());
     vTaskDelay(200);
   }
 
@@ -314,7 +317,7 @@ void TaskDrawLocalTime(void *pvParameters) {
 
       u8g2.setFont(u8g2_font_lubB18_tr);
       sprintf(lt, "%02d:%02d:%02d", now.hour, now.minute, now.second);
-      u8g2.drawStr(12, 40, lt);
+      u8g2.drawStr(12, 43, lt);
 
       u8g2.setFont(u8g2_font_profont11_tr);
       sprintf(ld, "%d.%02d.%02d", now.year, now.month, now.day);
@@ -354,17 +357,6 @@ void TaskGetTemperature(void *pvParameters) {
   }
 }
 
-void TaskInitDisplay(void *pvParameters) {
-  while (initFlag == 0) {
-    u8g2.firstPage();
-    do {
-      u8g2.setFont(u8g2_font_7x14_tf);
-      u8g2.drawStr(20, 20, "System init.");
-    } while (u8g2.nextPage());
-    vTaskDelay(1000);
-  }
-}
-
 void TaskChangeView(void *pvParameters) {
   for (;;) {
     viewFlag = !viewFlag;
@@ -382,17 +374,15 @@ void setup() {
 
   xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024 * 2, NULL, 5, NULL, ARDUINO_RUNNING_CORE);
   
-  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 0, &xHandle_update_data, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 8, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 4, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 
   xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
   
   xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
 
   xTaskCreatePinnedToCore(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
-
-  // xTaskCreatePinnedToCore(TaskInitDisplay, "TaskInitDisplay", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {
