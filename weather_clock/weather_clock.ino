@@ -382,17 +382,17 @@ void setup() {
 
   xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024 * 2, NULL, 5, NULL, ARDUINO_RUNNING_CORE);
   
-  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 0, &xHandle_update_data, ARDUINO_RUNNING_CORE);
 
   xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 8, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
   
-  xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 2, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
 
   xTaskCreatePinnedToCore(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
 
-//   xTaskCreatePinnedToCore(TaskInitDisplay, "TaskInitDisplay", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
+  // xTaskCreatePinnedToCore(TaskInitDisplay, "TaskInitDisplay", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {
