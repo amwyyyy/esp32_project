@@ -156,7 +156,7 @@ void getSymbol(String wea) {
   weather.symbol = SUN;
 }
 
-void readWea(WiFiClient client) {
+void readWeather(WiFiClient client) {
   client.readStringUntil('\n');
   client.readStringUntil('\n');
   String line = client.readStringUntil('\n');
@@ -200,7 +200,7 @@ void getWeather() {
     String line = client.readStringUntil('\n');
     if (line.indexOf(day) != -1) {
       Serial.println(line);
-      readWea(client);   
+      readWeather(client);   
       break;
     }
   }
@@ -368,7 +368,7 @@ void TaskInitDisplay(void *pvParameters) {
 void TaskChangeView(void *pvParameters) {
   for (;;) {
     viewFlag = !viewFlag;
-    vTaskDelay(5000);  
+    vTaskDelay(8000);  
   }
 }
 

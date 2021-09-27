@@ -235,31 +235,30 @@ static void lv_tick_task(void *arg)
 }
 
 //分割函数
-char *splitx(char *str,char *s,char *e){
-    char *t1=NULL;
-    char *t2=NULL;
-    char *t3=NULL;
-    uint8_t lensx=0;
+char *splitx(char *str, char *s, char *e){
+    char *t1 = NULL;
+    char *t2 = NULL;
+    char *t3 = NULL;
+    uint8_t lensx = 0;
     //在字符串str中查找第一次出现字符串s的位置，不包含终止符“\0”
-    t1=strstr(str,s);
-    if(t1==NULL){
-        ESP_LOGI("FUNC_splitx","t1 valave is NULL");
+    t1 = strstr(str, s);
+    if (t1 == NULL) {
+        ESP_LOGI("FUNC_splitx", "t1 valave is NULL");
         return ESP_OK;
     }
     //在字符串t1中查找第一次出现字符串e的位置，不包含终止符“\0”
-    t2=strstr(t1,e);
-    if(t2==NULL){
-        ESP_LOGI("FUNC_splitx","t2 valave is NULL");
+    t2 = strstr(t1, e);
+    if (t2 == NULL) {
+        ESP_LOGI("FUNC_splitx", "t2 valave is NULL");
         return ESP_OK;
     }
-    //printf("t1=%d\n t2=%d\n s=%d\n",strlen(t1),strlen(t2),strlen(s));
-    lensx=strlen(t1)-strlen(t2)-strlen(s);//strlen返回计数器值（不包含“\0”）
-    //printf("lensx=%d\n",lensx);
-    char t='\0';
-    t3=(char *)malloc(sizeof(char)*lensx+1);//malloc动态内存分配
-    memset(t3,t,sizeof(char)*lensx+1); //为新申请的内存做初始化
+    
+    lensx = strlen(t1) - strlen(t2) - strlen(s);//strlen返回计数器值（不包含“\0”）
+    char t = '\0';
+    t3 = (char *)malloc(sizeof(char) * lensx + 1);//malloc动态内存分配
+    memset(t3, t, sizeof(char) * lensx + 1); //为新申请的内存做初始化
     //把t1所指向的字符串中以t1地址开始的前lensx个字节复制到t3所指的数组中，并返回被复制后的t3
-    strncpy(t3,t1+sizeof(char)*strlen(s),lensx);//strncpy将指定长度的字符串复制到字符数组中
+    strncpy(t3, t1 + sizeof(char) * strlen(s), lensx);//strncpy将指定长度的字符串复制到字符数组中
     return t3;
  }
 
@@ -551,133 +550,133 @@ static void dashboard_task(void *pvParameter)
 	location_label = lv_label_create(lv_scr_act(), NULL);   
 	lv_label_set_text(location_label, NULL);	
 	lv_obj_align(location_label, wztb, LV_ALIGN_IN_TOP_LEFT,32,7); 
-	lv_obj_add_style(location_label,LV_LABEL_PART_MAIN, &tab_bg_style);  
+	lv_obj_add_style(location_label, LV_LABEL_PART_MAIN, &tab_bg_style);  
 
     // 今天日子文本显示
 	date_label = lv_label_create(tab1, NULL);  
 	lv_label_set_text(date_label, NULL);	
 	lv_obj_align(date_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 8); 
-	lv_obj_add_style(date_label,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(date_label, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	// 今天天气文本显示
 	weather_label = lv_label_create(tab1, NULL);   
 	lv_label_set_text(weather_label, NULL);	
 	lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 31); 
-	lv_obj_add_style(weather_label,LV_LABEL_PART_MAIN, &bghz_style);  
+	lv_obj_add_style(weather_label, LV_LABEL_PART_MAIN, &bghz_style);  
 
 	// 今天最低气温文本显示
 	low_label = lv_label_create(tab1, NULL);  
 	lv_label_set_text(low_label, NULL);
 	lv_obj_align(low_label, NULL, LV_ALIGN_IN_TOP_LEFT, 144, 54); 
-	lv_obj_add_style(low_label,LV_LABEL_PART_MAIN, &bghz_style);  
+	lv_obj_add_style(low_label, LV_LABEL_PART_MAIN, &bghz_style);  
 
 	// 今天风向文本显示
 	wine_label = lv_label_create(tab1, NULL);  
 	lv_label_set_text(wine_label, NULL);	
 	lv_obj_align(wine_label, NULL, LV_ALIGN_IN_TOP_LEFT, 182, 54); 
-	lv_obj_add_style(wine_label,LV_LABEL_PART_MAIN, &bghz_style);  
+	lv_obj_add_style(wine_label, LV_LABEL_PART_MAIN, &bghz_style);  
 
 	// 今天风力文本显示
 	wine_level_label = lv_label_create(tab1, NULL);  
 	lv_label_set_text(wine_level_label, NULL);	
 	lv_obj_align(wine_level_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 77); 
-	lv_obj_add_style(wine_level_label,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(wine_level_label, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	// 今天最高温度显示
 	high_label = lv_label_create(tab1, NULL);  
 	lv_label_set_text(high_label, NULL);
 	lv_obj_align(high_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 54); 
-	lv_obj_add_style(high_label,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(high_label, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	// 温度显示分割
 	lv_obj_t *split_label = lv_label_create(tab1, NULL);  
 	lv_label_set_text(split_label, "/");	
 	lv_obj_align(split_label, NULL, LV_ALIGN_IN_TOP_LEFT, 126, 54); 
-	lv_obj_add_style(split_label,LV_LABEL_PART_MAIN, &bghz_style);  
+	lv_obj_add_style(split_label, LV_LABEL_PART_MAIN, &bghz_style);  
 /*****************************************************/
     // 明天日子文本显示
 	tomorrow_date_label = lv_label_create(tab2, NULL); 
 	lv_label_set_text(tomorrow_date_label, NULL);	
 	lv_obj_align(tomorrow_date_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 8); 
-	lv_obj_add_style(tomorrow_date_label,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(tomorrow_date_label, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	// 明天天气文本显示
 	tomorrow_weather_label = lv_label_create(tab2, NULL);  
 	lv_label_set_text(tomorrow_weather_label, NULL);	
 	lv_obj_align(tomorrow_weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 90, 31); 
-	lv_obj_add_style(tomorrow_weather_label,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(tomorrow_weather_label, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label5_2 明天最低气温文本显示
 	label6_2 = lv_label_create(tab2, NULL);  
 	lv_label_set_text(label6_2, NULL);
 	lv_obj_align(label6_2, NULL, LV_ALIGN_IN_TOP_LEFT,144,54); 
-	lv_obj_add_style(label6_2,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label6_2, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label5_3 明天风向文本显示
 	label6_3 = lv_label_create(tab2, NULL);  
 	lv_label_set_text(label6_3, NULL);
 	lv_obj_align(label6_3, NULL, LV_ALIGN_IN_TOP_LEFT,182,54); 
-	lv_obj_add_style(label6_3,LV_LABEL_PART_MAIN, &bghz_style);  
+	lv_obj_add_style(label6_3, LV_LABEL_PART_MAIN, &bghz_style);  
 
 	//Label6_4 明天风力文本显示
 	label6_4 = lv_label_create(tab2, NULL);  
 	lv_label_set_text(label6_4, NULL);
 	lv_obj_align(label6_4, NULL, LV_ALIGN_IN_TOP_LEFT,90,77); 
-	lv_obj_add_style(label6_4,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label6_4, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label5_5 明天最高温度显示
 	label6_5 = lv_label_create(tab2, NULL);  
 	lv_label_set_text(label6_5, NULL);	
 	lv_obj_align(label6_5, NULL, LV_ALIGN_IN_TOP_LEFT,90,54); 
-	lv_obj_add_style(label6_5,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label6_5, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label5_5 明天最高温度显示
 	lv_obj_t *label6_6 = lv_label_create(tab2, NULL); 
 	lv_label_set_text(label6_6, "/");	
 	lv_obj_align(label6_6, NULL, LV_ALIGN_IN_TOP_LEFT,126,54);
-	lv_obj_add_style(label6_6,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label6_6, LV_LABEL_PART_MAIN, &bghz_style); 
 /*****************************************************/
     //Label7  后天日子文本显示
 	label7 = lv_label_create(tab3, NULL);  
 	lv_label_set_text(label7, NULL);	
 	lv_obj_align(label7, NULL, LV_ALIGN_IN_TOP_LEFT,90,8); 
-	lv_obj_add_style(label7,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label7, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label7_1 后天天气文本显示
 	label7_1 = lv_label_create(tab3, NULL);  
 	lv_label_set_text(label7_1, NULL);
 	lv_obj_align(label7_1, NULL, LV_ALIGN_IN_TOP_LEFT,90,31); 
-	lv_obj_add_style(label7_1,LV_LABEL_PART_MAIN, &bghz_style);  
+	lv_obj_add_style(label7_1, LV_LABEL_PART_MAIN, &bghz_style);  
 
 	//Label7_2 后天最低气温文本显示
 	label7_2 = lv_label_create(tab3, NULL);  
 	lv_label_set_text(label7_2, NULL);
 	lv_obj_align(label7_2, NULL, LV_ALIGN_IN_TOP_LEFT,144,54); 
-	lv_obj_add_style(label7_2,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label7_2, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label7_3 后天风向文本显示
 	label7_3 = lv_label_create(tab3, NULL);  
 	lv_label_set_text(label7_3, NULL);
 	lv_obj_align(label7_3, NULL, LV_ALIGN_IN_TOP_LEFT,182,54);
-	lv_obj_add_style(label7_3,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label7_3, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label7_4 后天风力文本显示
 	label7_4 = lv_label_create(tab3, NULL); 
 	lv_label_set_text(label7_4, NULL);
 	lv_obj_align(label7_4, NULL, LV_ALIGN_IN_TOP_LEFT,90,77);
-	lv_obj_add_style(label7_4,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label7_4, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label7_5 后天最高温度显示
 	label7_5 = lv_label_create(tab3, NULL); 
 	lv_label_set_text(label7_5, NULL);
 	lv_obj_align(label7_5, NULL, LV_ALIGN_IN_TOP_LEFT,90,54); 
-	lv_obj_add_style(label7_5,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label7_5, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	//Label7_6 后天温度分割显示
 	lv_obj_t *label7_6 = lv_label_create(tab3, NULL); 
 	lv_label_set_text(label7_6, "/");	
 	lv_obj_align(label7_6, NULL, LV_ALIGN_IN_TOP_LEFT,126,54); 
-	lv_obj_add_style(label7_6,LV_LABEL_PART_MAIN, &bghz_style); 
+	lv_obj_add_style(label7_6, LV_LABEL_PART_MAIN, &bghz_style); 
 
 	while (1)
 	{   
@@ -1576,54 +1575,18 @@ void startup_task(void)
 
 	switch (page_id)
 	{
-	case 0:
-		page_id = 1;
-		lv_img_set_src(img2, &windows_gd0);
-		break;
-	case 1:
-		page_id = 2;
-		lv_img_set_src(img2, &windows_gd1);
-		break;
-	case 2:
-		page_id = 3;
-		lv_img_set_src(img2, &windows_gd2);
-		break;
-	case 3:
-		page_id = 4;
-		lv_img_set_src(img2, &windows_gd3);
-		break;
-	case 4:
-		page_id = 5;
-		lv_img_set_src(img2, &windows_gd4);
-		break;
-	case 5:
-		page_id = 6;
-		lv_img_set_src(img2, &windows_gd5);
-		break;
-	case 6:
-		page_id = 7;
-		lv_img_set_src(img2, &windows_gd6);
-		break;
-	case 7:
-		page_id = 8;
-		lv_img_set_src(img2, &windows_gd7);
-		break;
-	case 8:
-		page_id = 9;
-		lv_img_set_src(img2, &windows_gd8);
-		break;
-	case 9:
-		page_id = 10;
-		lv_img_set_src(img2, &windows_gd9);
-		break;
-	case 10:
-		page_id = 11;
-		lv_img_set_src(img2, &windows_gd10);
-		break;
-	case 11:
-		page_id = 0;
-		lv_img_set_src(img2, &windows_gd11);
-		break;
+	case 0: page_id = 1; lv_img_set_src(img2, &windows_gd0); break;
+	case 1: page_id = 2; lv_img_set_src(img2, &windows_gd1); break;
+	case 2: page_id = 3; lv_img_set_src(img2, &windows_gd2); break;
+	case 3: page_id = 4; lv_img_set_src(img2, &windows_gd3); break;
+	case 4: page_id = 5; lv_img_set_src(img2, &windows_gd4); break;
+	case 5: page_id = 6; lv_img_set_src(img2, &windows_gd5); break;
+	case 6: page_id = 7; lv_img_set_src(img2, &windows_gd6); break;
+	case 7: page_id = 8; lv_img_set_src(img2, &windows_gd7); break;
+	case 8: page_id = 9; lv_img_set_src(img2, &windows_gd8); break;
+	case 9: page_id = 10; lv_img_set_src(img2, &windows_gd9); break;
+	case 10: page_id = 11; lv_img_set_src(img2, &windows_gd10); break;
+	case 11: page_id = 0; lv_img_set_src(img2, &windows_gd11); break;
 	default:
 		break;
 	}
@@ -1638,10 +1601,12 @@ void draw_img(void)
 	img1 = lv_img_create(lv_scr_act(), NULL);
 	lv_img_set_src(img1, &windows_kj0);
 	lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+
     //显示滚动图片第一张
 	img2 = lv_img_create(lv_scr_act(), NULL);
 	lv_img_set_src(img2, &windows_gd0);
 	lv_obj_align(img2, NULL, LV_ALIGN_IN_TOP_LEFT, 78, 164);
+
     //创建一个LVGL任务--每100个节拍运行一次
 	task1 = lv_task_create((lv_task_cb_t)startup_task, 100, LV_TASK_PRIO_MID, NULL);
 }
