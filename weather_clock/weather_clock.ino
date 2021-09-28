@@ -378,7 +378,7 @@ void TaskChangeView(void *pvParameters) {
 }
 
 void TaskDisplayQRCode(void *pvParameters) {
-  while (true) {
+  for (;;) {
     u8g2.firstPage();
     do {
       u8g2.setFont(u8g2_font_ncenB14_tr);
@@ -456,4 +456,5 @@ void loop() {
     server.handleClient();
     delay(50);
   }
+  delay(5000);
 }
