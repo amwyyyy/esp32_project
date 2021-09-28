@@ -432,6 +432,8 @@ void setup() {
   preferences.begin("esp32-clock", false);
   ssid = preferences.getString("ssid");
   password = preferences.getString("password");
+
+  // 根据是否获取到 WiFi 账号来判断是否进入配网模式
   if (ssid.length() == 0) {
     configWiFi();
   } else {
@@ -455,6 +457,8 @@ void loop() {
   if (ssid.length() == 0) {
     server.handleClient();
     delay(50);
+  } else {
+    // 非配网状态防止空转
+    delay(5000);
   }
-  delay(5000);
 }
