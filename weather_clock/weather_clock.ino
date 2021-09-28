@@ -3,6 +3,10 @@
 #include <Arduino.h>
 #include <U8g2lib.h>
 #include <DHTesp.h>
+#include <Preferences.h>
+#include "images.h"
+#include <WebServer.h>
+#include <uri/UriBraces.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -28,9 +32,6 @@
 #define THUNDER   4
 
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);     
-
-const char* ssid       = "xiongda";
-const char* password   = "15999554794";
 
 const char* ntpServer    = "ntp.aliyun.com";
 const long gmtOffset_sec = 3600 * 8;
@@ -73,6 +74,11 @@ DHTesp dht;
 int dhtPin = 4;
 TempAndHumidity newValues = {.temperature=0.0, .humidity=0.0};
 
+Preferences preferences;
+String ssid;
+String password;
+WebServer server(80);
+
 // 定义任务
 // 闪灯任务
 void TaskBlink(void *pvParameters);
@@ -86,6 +92,8 @@ void TaskUpdateWeather(void *pvParameters);
 void TaskGetTemperature(void *pvParameters);
 // 切换温度天气显示
 void TaskChangeView(void *pvParameters);
+// 显示配网二维码
+void TaskDisplayQRCode(void *pvParameters);
 
 void TaskBlink(void *pvParameters) {
   (void) pvParameters;
@@ -231,10 +239,15 @@ void connectWiFi() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(ssid.c_str(), password.c_str());
 
+  int count = 0;
   while (WiFi.status() != WL_CONNECTED) {
       vTaskDelay(300);
+      if (count++ > 200) {
+        preferences.clear();
+        ESP.restart();
+      }
   }
 
   Serial.print("WiFi connected. ");
@@ -364,6 +377,50 @@ void TaskChangeView(void *pvParameters) {
   }
 }
 
+void TaskDisplayQRCode(void *pvParameters) {
+  while (true) {
+    u8g2.firstPage();
+    do {
+      u8g2.setFont(u8g2_font_ncenB14_tr);
+      u8g2.drawXBMP(32, 0, qrcode_width, qrcode_height, qrcode_bits);
+    } while (u8g2.nextPage());
+    vTaskDelay(500);
+  }
+}
+
+// 配置 WiFi 账号密码
+void configWiFi() {
+  xTaskCreatePinnedToCore(TaskDisplayQRCode, "TaskDisplayQRCode", 1024 * 4, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
+
+  const char *ssidd = "esp32-clock";
+  WiFi.softAP(ssidd);
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+
+  server.on(UriBraces("/setting/{}/{}"), []() {
+    String ssidA = server.pathArg(0);
+    String passwordA = server.pathArg(1);
+    if (ssidA.length() !=0 && passwordA.length() != 0) {
+      preferences.putString("ssid", ssidA);
+      preferences.putString("password", passwordA);
+      server.send(200, "text/html", returnHtml);
+      delay(1000);
+      ESP.restart();
+    } else {
+      server.send(400, "text/plain", "input error!");
+    }
+  });
+
+  server.on("/", []() {
+    server.send(200, "text/html", html);
+  });
+  
+  server.begin();
+
+  Serial.println("Server started");
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -372,19 +429,31 @@ void setup() {
 
   dht.setup(dhtPin, DHTesp::DHT11);
 
-  // xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024 * 2, NULL, 5, NULL, ARDUINO_RUNNING_CORE);
-  
-  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data, ARDUINO_RUNNING_CORE);
+  preferences.begin("esp32-clock", false);
+  ssid = preferences.getString("ssid");
+  password = preferences.getString("password");
+  if (ssid.length() == 0) {
+    configWiFi();
+  } else {
+    server.stop();
 
-  xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 4, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+    // xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024 * 2, NULL, 5, NULL, ARDUINO_RUNNING_CORE);
+    
+    xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
-  
-  xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
+    xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 4, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 
-  xTaskCreatePinnedToCore(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
+    xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+    
+    xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
+
+    xTaskCreatePinnedToCore(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
+  }
 }
 
 void loop() {
-
+  if (ssid.length() == 0) {
+    server.handleClient();
+    delay(50);
+  }
 }
