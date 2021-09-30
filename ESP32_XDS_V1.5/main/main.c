@@ -31,8 +31,8 @@
 
 /* 宏定义WiFi更新标识码、WiFi名称和密码 */
 #define MY_WIFI_UPDATE  520               
-#define MY_WIFI_SSID    "WiFi"
-#define MY_WIFI_PASSWD  "passwd"
+#define MY_WIFI_SSID    "xiongda"
+#define MY_WIFI_PASSWD  "15999554794"
 
 #define TAG "LittlevGL Demo"
 #define LV_TICK_PERIOD_MS 10
@@ -1028,7 +1028,7 @@ static void get_lunar_task(void * pvParameters)
 				//printf("城市拼音=%s\n",t_city_py);	 
 				if(rwbz) {  
 					rwbz=0;  
-					xTaskCreate(get_city_code_task, "get_city_code_task", 1024*4, NULL, 1, NULL);  //创建动态任务-网络获得城市代码任务   只创建一次
+					// xTaskCreate(get_city_code_task, "get_city_code_task", 1024*4, NULL, 1, NULL);  //创建动态任务-网络获得城市代码任务   只创建一次
 					//xTaskCreatePinnedToCore(http_get_task1, "http_get_task1", 1024*4, NULL, 3, NULL, 1);  //初始化显示以及开机界面
 				}
 				st1=NULL;  
@@ -1677,8 +1677,8 @@ void app_main()
     /* 设置WiFi连接的ssid和password参数 */
     wifi_config_t wifi_config;
     bzero(&wifi_config, sizeof(wifi_config_t)); /* 将结构体数据清零 */
-    memcpy(wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
-    memcpy(wifi_config.sta.password, wifi_passwd, sizeof(wifi_config.sta.password));
+    memcpy(wifi_config.sta.ssid, "xiongda", 8);
+    memcpy(wifi_config.sta.password, "15999554794", 12);
 
 	// 设置sta模式
 	ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );

@@ -437,8 +437,6 @@ void setup() {
   if (ssid.length() == 0) {
     configWiFi();
   } else {
-    server.stop();
-
     // xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024 * 2, NULL, 5, NULL, ARDUINO_RUNNING_CORE);
     
     xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data, ARDUINO_RUNNING_CORE);
