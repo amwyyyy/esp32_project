@@ -1,19 +1,23 @@
-//1.54寸版本
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include <HTTPClient.h>
+#include <TFT_eSPI.h> 
+#include <SPI.h>
+#include <TJpg_Decoder.h>
+#include <EEPROM.h>
 #include <ArduinoJson.h> //请使用ArduinoJson V6版本，V5版本会导致编译失败
-
 #include <TimeLib.h>
 
 #include <Preferences.h>
 Preferences preferences; 
-String PrefSSID, PrefPassword; 
+String PrefSSID, PrefPassword;
+#include "src/SetWiFi.h" //Web配网
 
-#include <WiFi.h>
-#include <WiFiUdp.h>
-#include <HTTPClient.h>
-
+// 字体
 #include "font/ZdyLwFont_20.h"
 #include "font/FxLED_32.h"
 
+// 图片
 #include "img/main_img/main_img.h"
 #include "img/temperature.h"
 #include "img/humidity.h"
@@ -21,37 +25,16 @@ String PrefSSID, PrefPassword;
 #include "img/watch_bottom.h"
 #include "img/start_gif.h"
 #include "img/weather_code_jpg.h"
-
-#include "weather_code_jpg/d00.h"
-
-#include "img/taikongren/i0.h"
-#include "img/taikongren/i1.h"
-#include "img/taikongren/i2.h"
-#include "img/taikongren/i3.h"
-#include "img/taikongren/i4.h"
-#include "img/taikongren/i5.h"
-#include "img/taikongren/i6.h"
-#include "img/taikongren/i7.h"
-#include "img/taikongren/i8.h"
-#include "img/taikongren/i9.h"
 #include "img/setWiFi_img.h"
 #include "img/Weather_Warning_Icon.h"
 #include "img/Gif/ziji.h"
 #include "img/Gif/dagu.h"
 #include "img/Gif/zzzzzzz.h"
-
-#include "src/SetWiFi.h" //Web配网
-
-#include <TFT_eSPI.h> 
-#include <SPI.h>
-
-#include<EEPROM.h>
-
+#include "img/Gif/taikongren.h"
 
 /***********************功能参数配置**********************************/
 #define SerialBaud 115200   //串口波特率
 
-bool AutoBright = false; //自动亮度控制 true - 打开 false - 关闭
 byte setNTPSyncTime = 20; //设置NTP时间同步频率，10分钟同步一次
 byte setWeatherTime = 30; //设置天气数据更新频率，30分钟更新一次
 /*城市列表见CityCode文件夹内的cityCode.js文件*/
@@ -60,29 +43,20 @@ String cityCode = "101280601";  //手动修改天气城市代码，若为空则�
 /*示例1：String cityCode = "101250111";//雨花区*/
 /*示例2：String cityCode = "";//自动获取*/
 
-//群主调试用，DIY玩家请将Boards = 1，不要问为什么！！！
-byte Boards = 1;
-byte GL5528,Button;
-
-
-
 /********************************************************************/
-
 
 TFT_eSPI tft = TFT_eSPI();  
 TFT_eSprite clk = TFT_eSprite(&tft);
 
-#include <TJpg_Decoder.h>
-
 unsigned int Gif_Mode = 1;
-bool guanggao_Flag = true;
 uint32_t targetTime = 0;   
 byte omm = 99;
 boolean initial = 1;
 byte xcolon = 0;
 unsigned int colour = 0;
+byte Button;
 
-uint16_t bgColor = 0xffff;
+uint16_t bgColor = TFT_WHITE;
 
 //NTP服务器
 static const char ntpServerName[] = "ntp6.aliyun.com";
@@ -103,9 +77,11 @@ bool getCityCodeFlag = false;
 
 unsigned long t1 = 0,t2 = 0;
 
-bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap)
-{
-  if ( y >= tft.height() ) return 0;
+bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
+  if (y >= tft.height()) {
+    return 0;
+  }
+
   tft.pushImage(x, y, w, h, bitmap);
   // Return 1 to decode next block
   return 1;
@@ -115,17 +91,17 @@ byte loadNum = 6;
 void loading(byte delayTime,byte NUM){
   clk.setColorDepth(8);
   clk.createSprite(200, 50);
-  clk.fillSprite(0x0000);
+  clk.fillSprite(TFT_BLACK);
   clk.loadFont(ZdyLwFont_20); //加载font/ZdyLwFont_20字体
-  clk.drawRoundRect(0,0,200,16,8,0xFFFF);
-  clk.fillRoundRect(3,3,loadNum,10,5,0xFFFF);
+  clk.drawRoundRect(0, 0, 200, 16, 8, TFT_WHITE);
+  clk.fillRoundRect(3, 3, loadNum, 10, 5, TFT_WHITE);
   clk.setTextDatum(CC_DATUM);
-  clk.setTextColor(TFT_WHITE, 0x0000); 
-  clk.drawString("正在连接 "+ PrefSSID + " ...",100,40,2);
-  clk.pushSprite(20,110);
+  clk.setTextColor(TFT_WHITE, TFT_BLACK); 
+  clk.drawString("正在连接 " + PrefSSID + " ...", 100, 40, 2);
+  clk.pushSprite(20, 110);
   clk.deleteSprite();
   loadNum += NUM;
-  if(loadNum>=194){
+  if(loadNum >= 194){
     loadNum = 194;
   }
   delay(delayTime);
@@ -183,35 +159,26 @@ void setWiFi() {
 
 void setup()
 {
-  if(Boards == 1) { //ST7789
-  GL5528 = 32; //光敏电阻引脚
   Button = 4;  //按键引脚 
-  }
-  else if(Boards == 2) { //ILI 9488
-    GL5528 = 35; //光敏电阻引脚
-    Button = 18;  //按键引脚 
-  }
 
   EEPROM.begin(8);
-  guanggao_Flag = EEPROM.read(0);
+  
   tft.init();
   // 设置屏幕显示的旋转角度，参数为：0, 1, 2, 3
   // 分别代表 0°、90°、180°、270°
-  tft.setRotation(3); 
+  tft.setRotation(3);
   
   Serial.begin(SerialBaud);
-  pinMode(Button,INPUT); //配网按钮接GPIO-4
-  pinMode(GL5528,INPUT); //光敏电阻
-  randomSeed(analogRead(GL5528));
-  ledcSetup(0,5000,8);
-  ledcAttachPin(22,0);
-  ledcWrite(0,150);
+  pinMode(Button, INPUT); //配网按钮接GPIO-4
+  ledcSetup(0, 5000, 8);
+  ledcAttachPin(22, 0);
+  ledcWrite(0, 60);
 
   //首次使用自动进入配网模式,读取NVS存储空间内的ssid、password和citycode
   preferences.begin("wifi", false);
   PrefSSID =  preferences.getString("ssid", "none"); 
   PrefPassword =  preferences.getString("password", "none");
-  cityCode =  preferences.getString("citycode", "none");
+  // cityCode =  preferences.getString("citycode", "none");
   preferences.end();
   if( PrefSSID == "none" )
   {
@@ -253,21 +220,12 @@ void setup()
   
 
   if(buttonStateTime >= 15500) { //打开/关闭启动广告
-    guanggao_Flag = !guanggao_Flag;
-    EEPROM.write(0,guanggao_Flag);
-    EEPROM.commit();
-    //Serial.println(EEPROM.read(0));
     clk.loadFont(ZdyLwFont_20);
     clk.createSprite(240, 80); 
     clk.setTextDatum(CC_DATUM);
     clk.setTextColor(TFT_WHITE, bgColor); 
-    if(guanggao_Flag) {
-      clk.drawString("启动广告已打开",120,40);
-    }
-    else {
-      clk.drawString("启动广告已关闭",120,40);
-    }
-    clk.pushSprite(0,80);
+    clk.drawString("启动广告已关闭",120,40);
+    clk.pushSprite(0, 80);
     clk.deleteSprite();
     clk.unloadFont(); //释放加载字体资源
     delay(3000);
@@ -294,37 +252,17 @@ void setup()
   }
 
   Gif_Mode = EEPROM.read(1);
-//  Gif_Mode = 3;
+  Gif_Mode = 3;
 
-  //广告页
-  if(0) {
-    TJpgDec.setJpgScale(1);
-    TJpgDec.setSwapBytes(true);
-    TJpgDec.setCallback(tft_output);
-    TJpgDec.drawJpg(0,0,guanggao, sizeof(guanggao));
-    clk.loadFont(ZdyLwFont_20);
-    clk.createSprite(40, 30); 
-    for(int i=10;i>=1;i--) {
-      clk.fillSprite(bgColor);
-      clk.setTextDatum(CC_DATUM);
-      clk.setTextColor(TFT_BLACK, bgColor); 
-      clk.drawString(String(i) + "秒",20,15);
-      clk.pushSprite(200,210);
-      delay(1000);
-    }
-    clk.deleteSprite();
-    clk.unloadFont(); //释放加载字体资源
-  }
-
-  tft.fillScreen(0x0000);
+  tft.fillScreen(TFT_BLACK);
   delay(100);
   tft.setTextColor(TFT_BLACK, bgColor);
 
   targetTime = millis() + 1000; 
 
-  Serial.println("正在连接"+ PrefSSID + " ...");
+  Serial.println("正在连接" + PrefSSID + " ...");
   WiFi.begin(PrefSSID.c_str(), PrefPassword.c_str());
-  //WiFi.begin("CKTN", "18900744765");
+
   while (WiFi.status() != WL_CONNECTED) {
     for(byte n=0;n<10;n++){ 
       loading(100,1);
@@ -338,7 +276,7 @@ void setup()
     }
   }
   while(loadNum < 194 & connectTimes <= 189){ //让动画走完
-    loading(0,5);
+    loading(0, 5);
     connectTimes = 0;
   }
 
@@ -355,111 +293,69 @@ void setup()
   TJpgDec.setJpgScale(1);
   TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(tft_output);
-  int x=0,y=0,dt=50,xyz=1; //x\y=图片显示坐标，dt=单帧切换时间，xyz=gif整体播放的次数
-    while(imgNum_1 <= 19 & xyz >= 0) {
-      if(millis() - oldTime_1 >= dt) {
-        imgNum_1 = imgNum_1 + 1;
-        oldTime_1 = millis();
-      }
+  // int x=0, y=0, dt=50, xyz=1; //x\y=图片显示坐标，dt=单帧切换时间，xyz=gif整体播放的次数
+  // while(imgNum_1 <= 19 & xyz >= 0) {
+  //   if(millis() - oldTime_1 >= dt) {
+  //     imgNum_1 = imgNum_1 + 1;
+  //     oldTime_1 = millis();
+  //   }
       //wifi连接成功后的动画显示
-      /*switch(imgNum_1) {
-        case 1: TJpgDec.drawJpg(x,y,start_0, sizeof(start_0));break;
-        case 2: TJpgDec.drawJpg(x,y,start_1, sizeof(start_1));break;
-        case 3: TJpgDec.drawJpg(x,y,start_2, sizeof(start_2));break;
-        case 4: TJpgDec.drawJpg(x,y,start_3, sizeof(start_3));break;
-        case 5: TJpgDec.drawJpg(x,y,start_4, sizeof(start_4));break;
-        case 6: TJpgDec.drawJpg(x,y,start_5, sizeof(start_5));break;
-        case 7: TJpgDec.drawJpg(x,y,start_6, sizeof(start_6));break;
-        case 8: TJpgDec.drawJpg(x,y,start_7, sizeof(start_7));break;
-        case 9: TJpgDec.drawJpg(x,y,start_8, sizeof(start_8));break;
-        case 10: TJpgDec.drawJpg(x,y,start_9, sizeof(start_9));break;
-        case 11: TJpgDec.drawJpg(x,y,start_10, sizeof(start_10));break;
-        case 12: TJpgDec.drawJpg(x,y,start_11, sizeof(start_11));break;
-        case 13: TJpgDec.drawJpg(x,y,start_12, sizeof(start_12));break;
-        case 14: TJpgDec.drawJpg(x,y,start_13, sizeof(start_13));break;
-        case 15: TJpgDec.drawJpg(x,y,start_14, sizeof(start_14));break;
-        case 16: TJpgDec.drawJpg(x,y,start_15, sizeof(start_15));break;
-        case 17: TJpgDec.drawJpg(x,y,start_16, sizeof(start_16));break;
-        case 18: TJpgDec.drawJpg(x,y,start_17, sizeof(start_17));break;
-        case 19: TJpgDec.drawJpg(x,y,start_18, sizeof(start_18));imgNum_1 = 1;xyz--;break;
-      } */
-  }
+    //  switch(imgNum_1) {
+    //    case 1: TJpgDec.drawJpg(x,y,start_0, sizeof(start_0));break;
+    //    case 2: TJpgDec.drawJpg(x,y,start_1, sizeof(start_1));break;
+    //    case 3: TJpgDec.drawJpg(x,y,start_2, sizeof(start_2));break;
+    //    case 4: TJpgDec.drawJpg(x,y,start_3, sizeof(start_3));break;
+    //    case 5: TJpgDec.drawJpg(x,y,start_4, sizeof(start_4));break;
+    //    case 6: TJpgDec.drawJpg(x,y,start_5, sizeof(start_5));break;
+    //    case 7: TJpgDec.drawJpg(x,y,start_6, sizeof(start_6));break;
+      //  case 8: TJpgDec.drawJpg(x,y,start_7, sizeof(start_7));break;
+      //  case 9: TJpgDec.drawJpg(x,y,start_8, sizeof(start_8));break;
+      //  case 10: TJpgDec.drawJpg(x,y,start_9, sizeof(start_9));break;
+      //  case 11: TJpgDec.drawJpg(x,y,start_10, sizeof(start_10));break;
+      //  case 12: TJpgDec.drawJpg(x,y,start_11, sizeof(start_11));break;
+      //  case 13: TJpgDec.drawJpg(x,y,start_12, sizeof(start_12));break;
+      //  case 14: TJpgDec.drawJpg(x,y,start_13, sizeof(start_13));break;
+      //  case 15: TJpgDec.drawJpg(x,y,start_14, sizeof(start_14));break;
+      //  case 16: TJpgDec.drawJpg(x,y,start_15, sizeof(start_15));break;
+      //  case 17: TJpgDec.drawJpg(x,y,start_16, sizeof(start_16));break;
+      //  case 18: TJpgDec.drawJpg(x,y,start_17, sizeof(start_17));break;
+    //    case 19: TJpgDec.drawJpg(x,y,start_18, sizeof(start_18));imgNum_1 = 1;xyz--;break;
+    //  }
+  // }
   delay(200);
-  // Serial.println("赶紧扫码加QQ群，或手动搜索QQ群号：531732157");
-  // TJpgDec.drawJpg(x,y,start_end, sizeof(start_end)); //显示QQ扫码加群二维码
-  // delay(3000);
 
-  //TJpgDec.drawJpg(0,0,watchtop, sizeof(watchtop)); //顶部图片显示 240*20
-  //TJpgDec.drawJpg(0,220,watchbottom, sizeof(watchbottom)); //底部图片显示 240*20
-  
   //绘制一个视口
-  //tft.setViewport(0, 20, 240, 240);
-  tft.fillScreen(0x0000);
-  tft.fillRoundRect(0,0,240,240,0,bgColor);//实心矩形
-  //tft.resetViewport();
+  tft.fillScreen(TFT_BLACK);
+  tft.fillRoundRect(0, 0, 240, 240, 0, bgColor);//实心矩形
 
   //绘制线框
-  tft.drawFastHLine(0,0,240,TFT_BLACK);
-  //tft.drawFastHLine(0,220,240,TFT_BLACK);
+  tft.drawFastHLine(0, 0, 240, TFT_BLACK);
 
-  tft.drawFastHLine(0,34,240,TFT_BLACK);
-  tft.drawFastHLine(0,200,240,TFT_BLACK);
+  tft.drawFastHLine(0, 34, 240, TFT_BLACK);
+  tft.drawFastHLine(0, 200, 240, TFT_BLACK);
   
-  tft.drawFastVLine(150,0,34,TFT_BLACK);
+  tft.drawFastVLine(150, 0, 34, TFT_BLACK);
   
-  tft.drawFastHLine(0,166,240,TFT_BLACK);
+  tft.drawFastHLine(0, 166, 240, TFT_BLACK);
   
-  tft.drawFastVLine(60,166,34,TFT_BLACK);
-  tft.drawFastVLine(160,166,34,TFT_BLACK);
+  tft.drawFastVLine(60, 166, 34, TFT_BLACK);
+  tft.drawFastVLine(160, 166, 34, TFT_BLACK);
 
   if(cityCode.length() >= 8) {
-    //Serial.println("手动设置cityCode");
+    // 手动设置cityCode 
     getCityWeater(); //获取天气数据
   }
   else {
-    //Serial.println("自动设置cityCode");
+    // 自动设置cityCode 
     getCityCode();  //获取城市代码
   }
-  //getLunarCalendar();
 }
 
 time_t prevDisplay = 0; // 显示时间
 unsigned long weaterTime = 0;
-
-float v1 = 2.0;
-int time123 = 0;
-
-#define FILTER_N 20
-int Filter() {
-  int i;
-  int filter_sum = 0;
-  int filter_max, filter_min;
-  int filter_buf[FILTER_N];
-  for(i = 0; i < FILTER_N; i++) {
-    filter_buf[i] = analogRead(GL5528);
-    delay(1);
-  }
-  filter_max = filter_buf[0];
-  filter_min = filter_buf[0];
-  filter_sum = filter_buf[0];
-  for(i = FILTER_N - 1; i > 0; i--) {
-    if(filter_buf[i] > filter_max)
-      filter_max=filter_buf[i];
-    else if(filter_buf[i] < filter_min)
-      filter_min=filter_buf[i];
-    filter_sum = filter_sum + filter_buf[i];
-    filter_buf[i] = filter_buf[i - 1];
-  }
-  i = FILTER_N - 2;
-  filter_sum = filter_sum - filter_max - filter_min + i / 2; // +i/2 的目的是为了四舍五入
-  filter_sum = filter_sum / i;
-  return filter_sum;
-}
-
-
 unsigned long wdsdTime = 0;
 byte wdsdValue = 0;
-String wendu = "",shidu = "";
+String wendu = "", shidu = "";
 
 unsigned long wifiTimes = 0;
 
@@ -467,13 +363,8 @@ void loop(){
 
   t1 = millis();
 
-  switch(AutoBright) { //屏幕背光控制
-    case true:Filter_Value = Filter();ledcWrite(0,map(Filter_Value,0,4095,0,255));break;
-    case false:ledcWrite(0,150);break;
-  }
-  //Filter_Value = Filter();
-  //ledcWrite(0,map(Filter_Value,0,4095,0,255));
-  //ledcWrite(0,150);
+  // 设置屏幕亮度
+  ledcWrite(0, 60);
   
   if(digitalRead(Button) == HIGH) { 
     delay(500);
@@ -486,7 +377,7 @@ void loop(){
   }
 
   //更新时，网络环境差的情况下，屏幕会有短暂停止刷新过程，网络环境好，该过程不明显，很难看出差别
-  if((millis() - weaterTime) > (setWeatherTime*60000)){ //30分钟更新一次天气
+  if((millis() - weaterTime) > (setWeatherTime * 60000)){ //30分钟更新一次天气
     getCityWeaterFlag = false;
     getCityCodeFlag = false;
     weaterTime = millis();
@@ -520,29 +411,27 @@ void weatherWarning() { //间隔5秒切换显示温度和湿度，该数据为�
     clk.loadFont(ZdyLwFont_20);
     switch(wdsdValue) {
       case 1:
-      //Serial.println("wdsdValue1" + String(wdsdValue));
-        TJpgDec.drawJpg(165,171,temperature, sizeof(temperature));  //温度图标
+        TJpgDec.drawJpg(165, 171, temperature, sizeof(temperature));  //温度图标
         for(int i=20;i>0;i--) {
           clk.createSprite(50, 32); 
           clk.fillSprite(bgColor);
           clk.setTextDatum(CC_DATUM);
           clk.setTextColor(TFT_BLACK, bgColor); 
-          clk.drawString(wendu+"℃",25,i+16);
-          clk.pushSprite(188,168);
+          clk.drawString(wendu + "℃", 25, i + 16);
+          clk.pushSprite(188, 168);
           clk.deleteSprite();
           vTaskDelay(3);
         }
         break;
       case 2:
-      //Serial.println("wdsdValue2" + String(wdsdValue));
-        TJpgDec.drawJpg(165,171,humidity, sizeof(humidity));  //湿度图标
-        for(int i=20;i>0;i--) {
+        TJpgDec.drawJpg(165, 171, humidity, sizeof(humidity));  //湿度图标
+        for(int i=20; i>0; i--) {
           clk.createSprite(50, 32); 
           clk.fillSprite(bgColor);
           clk.setTextDatum(CC_DATUM);
           clk.setTextColor(TFT_BLACK, bgColor);   
-          clk.drawString(shidu,25,i+16);
-          clk.pushSprite(188,168);
+          clk.drawString(shidu, 25, i + 16);
+          clk.pushSprite(188, 168);
           clk.deleteSprite();
           vTaskDelay(3);
         }
@@ -559,7 +448,7 @@ void smartConfigWIFI()
   TJpgDec.setJpgScale(1);
   TJpgDec.setSwapBytes(true);
   TJpgDec.setCallback(tft_output);
-  TJpgDec.drawJpg(0,0,wifi_config, sizeof(wifi_config)); //显示微信配网图片 
+  TJpgDec.drawJpg(0, 0, wifi_config, sizeof(wifi_config)); //显示微信配网图片 
   WiFi.mode(WIFI_AP_STA);
   delay(100);
   WiFi.beginSmartConfig();
@@ -574,8 +463,8 @@ void smartConfigWIFI()
     Serial.print(".");
   }
   preferences.begin("wifi", false);
-  preferences.putString( "ssid" , WiFi.SSID());
-  preferences.putString( "password", WiFi.psk());
+  preferences.putString("ssid" , WiFi.SSID());
+  preferences.putString("password", WiFi.psk());
   preferences.end();
 
   Serial.println("配网完成，正在重启...");
@@ -585,11 +474,11 @@ void smartConfigWIFI()
 
 // 发送HTTP请求并且将服务器响应通过串口输出
 void getCityCode(){
-  int OldConnectionTimes = millis(),NewConnectionTimes = 0;
+  int OldConnectionTimes = millis(), NewConnectionTimes = 0;
   //创建 HTTPClient 对象
   HTTPClient httpClient;
   while(getCityCodeFlag == false) {
-    String URL = "http://wgeo.weather.com.cn/ip/?_="+String(now());
+    String URL = "http://wgeo.weather.com.cn/ip/?_=" + String(now());
     
     //配置请求地址。此处也可以不使用端口号和PATH而单纯的
     httpClient.begin(URL); 
@@ -607,11 +496,9 @@ void getCityCode(){
     //如果服务器响应OK则从服务器获取响应体信息并通过串口输出
     if (httpCode == HTTP_CODE_OK) {
       String str = httpClient.getString();
-      //Serial.println(str); 
       int aa = str.indexOf("id=");
-      if(aa>-1){
-        cityCode = str.substring(aa+4,aa+4+9);
-        //Serial.println(cityCode); 
+      if(aa > -1){
+        cityCode = str.substring(aa + 4,aa + 4 + 9);
         Serial.println("获取城市代码成功");
         getCityCodeFlag = true;  
         getCityWeater();
@@ -633,19 +520,13 @@ void getCityCode(){
 }
 
 // 获取城市天气
-/*
-* 101250111 - 雨花区
-* 101250106 - 长沙县
-* 101250101 - 长沙
-*/
 bool warn_2 = false;
 int Warn_Number1 = 0,Warn_Value1 = 0,Warn_Number2 = 0,Warn_Value2 = 0,Warn_Flag = 1;
 void getCityWeater(){
   int OldConnectionTimes = millis(),NewConnectionTimes = 0;
-  //cityCode = "101250106";
   HTTPClient httpClient;
   while(getCityWeaterFlag == false) {
-    String URL = "http://d1.weather.com.cn/weather_index/" + cityCode + ".html?_="+String(now());
+    String URL = "http://d1.weather.com.cn/weather_index/" + cityCode + ".html?_=" + String(now());
     //创建 HTTPClient 对象
     
     httpClient.begin(URL); 
@@ -661,41 +542,33 @@ void getCityWeater(){
 
     //如果服务器响应OK则从服务器获取响应体信息并通过串口输出
     if (httpCode == HTTP_CODE_OK) {
-
       String str = httpClient.getString();
-      //Serial.println(str);
 
       int indexStart = str.indexOf("weatherinfo\":");
       int indexEnd = str.indexOf("};var alarmDZ");
-      String jsonCityDZ = str.substring(indexStart+13,indexEnd);
-      //Serial.println(jsonCityDZ);
+      String jsonCityDZ = str.substring(indexStart + 13, indexEnd);
 
-    //气象预警不同时间会发布不同的预警信息，只会显示最新的一个，显示多个也只是显示最新时间的前一个预警，没必要了
+      // 气象预警不同时间会发布不同的预警信息，只会显示最新的一个，显示多个也只是显示最新时间的前一个预警，没必要了
       indexStart = str.indexOf("alarmDZ ={\"w\":[");
       indexEnd = str.indexOf("]};var dataSK");
-      String jsonDataWarn1 = str.substring(indexStart+15,indexEnd);
-      //Serial.println("1="+jsonDataWarn1);
+      String jsonDataWarn1 = str.substring(indexStart + 15, indexEnd);
       if(jsonDataWarn1.length() >= 40) {
         Warn_Flag = 1;
-      }
-      else {
+      } else {
         Warn_Flag = 0;
       }
 
       indexStart = str.indexOf("dataSK =");
       indexEnd = str.indexOf(";var dataZS");
       String jsonDataSK = str.substring(indexStart+8,indexEnd);
-      //Serial.println(jsonDataSK);
 
       indexStart = str.indexOf("\"f\":[");
       indexEnd = str.indexOf(",{\"fa");
       String jsonFC = str.substring(indexStart+5,indexEnd);
-      //Serial.println(jsonFC);
 
       indexStart = str.indexOf(";var dataZS ={\"zs\":");
       indexEnd = str.indexOf(",\"cn\":\"长沙\"};var fc =");
       String jsonSuggest = str.substring(indexStart+19,indexEnd);
-      //Serial.println(jsonSuggest);
       
       weaterData(&jsonCityDZ,&jsonDataSK,&jsonFC,&jsonSuggest,&jsonDataWarn1);
       Serial.println("天气数据获取成功");
@@ -755,8 +628,6 @@ void weaterData(String *cityDZ,String *dataSK,String *dataFC,String *dataSuggest
   clk.loadFont(ZdyLwFont_20); //加载font/ZdyLwFont_20字体
   wendu = sk["temp"].as<String>();
   shidu = sk["SD"].as<String>();
-
-  
  
   //城市名称
   clk.createSprite(88, 32);  //88,32
@@ -776,29 +647,29 @@ void weaterData(String *cityDZ,String *dataSK,String *dataFC,String *dataSuggest
   if(pm25V >= 301) {
     pm25BgColor = tft.color565(255,36,0);//重度
     aqiTxt = "严重";
-  }else if(pm25V >= 201 & pm25V <= 300){
+  } else if(pm25V >= 201 & pm25V <= 300){
     pm25BgColor = tft.color565(136,11,32);//重度
     aqiTxt = "重度";
-  }else if(pm25V >= 151 & pm25V <= 200){
+  } else if(pm25V >= 151 & pm25V <= 200){
     pm25BgColor = tft.color565(186,55,121);//中度
     aqiTxt = "中度";
-  }else if(pm25V >= 101 & pm25V <= 160){
+  } else if(pm25V >= 101 & pm25V <= 160){
     pm25BgColor = tft.color565(242,159,57);//轻
     aqiTxt = "轻度";
-  }else if(pm25V >= 51 & pm25V <= 100){
+  } else if(pm25V >= 51 & pm25V <= 100){
     pm25BgColor = tft.color565(247,219,100);//良
     aqiTxt = "良";
-  }else if(pm25V >= 0 & pm25V <= 50) {
+  } else if(pm25V >= 0 & pm25V <= 50) {
     pm25BgColor = tft.color565(156,202,127);//优
     aqiTxt = "优";
   }
   clk.createSprite(50, 24); 
   clk.fillSprite(bgColor);
-  clk.fillRoundRect(0,0,50,24,4,pm25BgColor);
+  clk.fillRoundRect(0, 0, 50, 24, 4, pm25BgColor);
   clk.setTextDatum(CC_DATUM);
-  clk.setTextColor(0xFFFF); 
-  clk.drawString(aqiTxt,25,14);
-  clk.pushSprite(5,140);
+  clk.setTextColor(TFT_WHITE); 
+  clk.drawString(aqiTxt, 25, 14);
+  clk.pushSprite(5, 140);
   clk.deleteSprite();
 
   //左上角滚动字幕
@@ -1069,7 +940,6 @@ void ButtonscrollBanner(){
       
     }
     ButtonprevTime = millis();
-    
   }
 }
 
@@ -1079,8 +949,8 @@ void ButtonScrollTxt(int pos){
   clkbb.fillSprite(bgColor);
   clkbb.setTextDatum(CC_DATUM);
   clkbb.setTextColor(TFT_BLACK, bgColor); 
-  clkbb.drawString(ButtonScrollText[ButtoncurrentIndex],120,pos+20);
-  clkbb.pushSprite(0,201);
+  clkbb.drawString(ButtonScrollText[ButtoncurrentIndex], 120, pos + 20);
+  clkbb.pushSprite(0, 201);
   //clkbb.deleteSprite();
   //clkbb.unloadFont(); //释放加载字体资源
 }
@@ -1201,16 +1071,16 @@ void imgDisplay(){
   }
   else if(Gif_Mode == 3) { //动画-太空人
     switch(imgNum) {
-        case 1: TJpgDec.drawJpg(x,y,i0, sizeof(i0));break;
-        case 2: TJpgDec.drawJpg(x,y,i1, sizeof(i1));break;
-        case 3: TJpgDec.drawJpg(x,y,i2, sizeof(i2));break;
-        case 4: TJpgDec.drawJpg(x,y,i3, sizeof(i3));break;
-        case 5: TJpgDec.drawJpg(x,y,i4, sizeof(i4));break;
-        case 6: TJpgDec.drawJpg(x,y,i5, sizeof(i5));break;
-        case 7: TJpgDec.drawJpg(x,y,i6, sizeof(i6));break;
-        case 8: TJpgDec.drawJpg(x,y,i7, sizeof(i7));break;
-        case 9: TJpgDec.drawJpg(x,y,i8, sizeof(i8));break;
-        case 10: TJpgDec.drawJpg(x,y,i9, sizeof(i9));imgNum=1;break;
+        case 1: TJpgDec.drawJpg(x, y, i0, sizeof(i0));break;
+        case 2: TJpgDec.drawJpg(x, y, i1, sizeof(i1));break;
+        case 3: TJpgDec.drawJpg(x, y, i2, sizeof(i2));break;
+        case 4: TJpgDec.drawJpg(x, y, i3, sizeof(i3));break;
+        case 5: TJpgDec.drawJpg(x, y, i4, sizeof(i4));break;
+        case 6: TJpgDec.drawJpg(x, y, i5, sizeof(i5));break;
+        case 7: TJpgDec.drawJpg(x, y, i6, sizeof(i6));break;
+        case 8: TJpgDec.drawJpg(x, y, i7, sizeof(i7));break;
+        case 9: TJpgDec.drawJpg(x, y, i8, sizeof(i8));break;
+        case 10: TJpgDec.drawJpg(x, y, i9, sizeof(i9));imgNum=1;break;
       }
   }
   else if(Gif_Mode == 2) { //动画-耍杂技
@@ -1329,9 +1199,9 @@ void digitalClockDisplay()
   //clk.loadFont(FxLED_48);
   clk.setTextDatum(CC_DATUM);
   clk.setTextColor(TFT_BLACK, bgColor);
-  clk.drawString(hourMinute(),70,24,7); //绘制时和分
+  clk.drawString(hourMinute(), 70, 24, 7); //绘制时和分
   //clk.unloadFont();
-  clk.pushSprite(28,40);
+  clk.pushSprite(28, 40);
   clk.deleteSprite();
   
   //秒
@@ -1341,7 +1211,7 @@ void digitalClockDisplay()
   clk.loadFont(FxLED_32);
   clk.setTextDatum(CC_DATUM);
   clk.setTextColor(TFT_BLACK, bgColor); 
-  clk.drawString(num2str(second()),20,12);
+  clk.drawString(num2str(second()), 20, 12);
   
   clk.unloadFont();
   clk.pushSprite(170,55);
@@ -1371,8 +1241,6 @@ void digitalClockDisplay()
   
   clk.unloadFont();
   /***底部***/
-
-  
 }
 
 //星期
