@@ -123,7 +123,6 @@ void handleRootPost() {//Post回调函数
     return;
   }
 
-
   if (server.hasArg("citycode")) {
     Serial.print("got citycode:");
     strcpy(sta_citycode, server.arg("citycode").c_str());
@@ -161,13 +160,13 @@ void initSoftAP(void){//初始化AP模式
   }
 }
 
-void initWebServer(void){//初始化WebServer
-  //server.on("/",handleRoot);
-  //上面那行必须以下面这种格式去写否则无法强制门户
-  server.on("/", HTTP_GET, handleRoot);//设置主页回调函数
-  server.onNotFound(handleRoot);//设置无法响应的http请求的回调函数
-  server.on("/", HTTP_POST, handleRootPost);//设置Post请求回调函数
-  server.begin();//启动WebServer
+// 初始化WebServer
+void initWebServer(void){
+  // 上面那行必须以下面这种格式去写否则无法强制门户
+  server.on("/", HTTP_GET, handleRoot);// 设置主页回调函数
+  server.onNotFound(handleRoot);// 设置无法响应的http请求的回调函数
+  server.on("/", HTTP_POST, handleRootPost);// 设置Post请求回调函数
+  server.begin();// 启动WebServer
   Serial.println("WebServer started!");
 }
 
@@ -181,18 +180,18 @@ void initDNS(void){//初始化DNS服务器
 void connectNewWifi(void){
   WiFi.mode(WIFI_STA);//切换为STA模式
  // WiFi.setAutoConnect(true);//设置自动连接
-    WiFi.begin(PrefSSID.c_str(), PrefPassword.c_str());//连接上一次连接成功的wifi
+  WiFi.begin(PrefSSID.c_str(), PrefPassword.c_str());//连接上一次连接成功的wifi
   Serial.println("");
   Serial.print("Connect to wifi");
   int count = 0;
    while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     count++;
-    if(count > 20){//如果10秒内没有连上，就开启Web配网 可适当调整这个时间
+    if(count > 20){// 如果10秒内没有连上，就开启Web配网 可适当调整这个时间
       initSoftAP();
       initWebServer();
       initDNS();
-      break;//跳出 防止无限初始化
+      break;// 跳出 防止无限初始化
     }
     Serial.print(".");
   }

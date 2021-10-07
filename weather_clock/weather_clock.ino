@@ -1,10 +1,10 @@
 #include <WiFi.h>
-#include "time.h"
+#include <time.h>
 #include <Arduino.h>
 #include <U8g2lib.h>
 #include <DHTesp.h>
 #include <Preferences.h>
-#include "images.h"
+#include <images.h>
 #include <WebServer.h>
 #include <uri/UriBraces.h>
 
@@ -432,6 +432,7 @@ void setup() {
   preferences.begin("esp32-clock", false);
   ssid = preferences.getString("ssid");
   password = preferences.getString("password");
+  preferences.end();
 
   // 根据是否获取到 WiFi 账号来判断是否进入配网模式
   if (ssid.length() == 0) {

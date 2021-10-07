@@ -54,7 +54,7 @@ byte omm = 99;
 boolean initial = 1;
 byte xcolon = 0;
 unsigned int colour = 0;
-byte Button;
+byte Button = 4; //按键引脚 
 
 uint16_t bgColor = TFT_WHITE;
 
@@ -88,7 +88,7 @@ bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) 
 }
 
 byte loadNum = 6;
-void loading(byte delayTime,byte NUM){
+void loading(byte delayTime, byte NUM){
   clk.setColorDepth(8);
   clk.createSprite(200, 50);
   clk.fillSprite(TFT_BLACK);
@@ -157,10 +157,7 @@ void setWiFi() {
   }
 }
 
-void setup()
-{
-  Button = 4;  //按键引脚 
-
+void setup() {
   EEPROM.begin(8);
   
   tft.init();
@@ -180,9 +177,7 @@ void setup()
   PrefPassword =  preferences.getString("password", "none");
   // cityCode =  preferences.getString("citycode", "none");
   preferences.end();
-  if( PrefSSID == "none" )
-  {
-    //smartConfigWIFI();
+  if(PrefSSID == "none") {
     setWiFi();
   }
 
@@ -231,7 +226,6 @@ void setup()
     delay(3000);
   } 
   else if(buttonStateTime >= 12500) { //配网模式
-    //smartConfigWIFI();
     setWiFi();
   }
   else if(buttonStateTime >= 9500) { //动画-龙猫打鼓
@@ -264,13 +258,12 @@ void setup()
   WiFi.begin(PrefSSID.c_str(), PrefPassword.c_str());
 
   while (WiFi.status() != WL_CONNECTED) {
-    for(byte n=0;n<10;n++){ 
-      loading(100,1);
+    for(byte n=0; n<10; n++){ 
+      loading(100, 1);
       connectTimes++;
       if(connectTimes >= 190) { //进度条即将结束时还未连接成功，则提示wifi连接失败，自动进入配网模式
         connectTimes = 0;
         displayConnectWifiFalse();
-        //smartConfigWIFI();
         setWiFi();
       }
     }
@@ -282,7 +275,6 @@ void setup()
 
   Serial.print("本地IP： ");
   Serial.println(WiFi.localIP());
-  //Serial.println("启动UDP");
   Udp.begin(localPort);
   //Serial.print("端口号: ");
   //Serial.println(Udp.localPort());
@@ -441,35 +433,6 @@ void weatherWarning() { //间隔5秒切换显示温度和湿度，该数据为�
     wdsdTime = millis();
     clk.unloadFont();
   }
-}
-
-void smartConfigWIFI()
-{
-  TJpgDec.setJpgScale(1);
-  TJpgDec.setSwapBytes(true);
-  TJpgDec.setCallback(tft_output);
-  TJpgDec.drawJpg(0, 0, wifi_config, sizeof(wifi_config)); //显示微信配网图片 
-  WiFi.mode(WIFI_AP_STA);
-  delay(100);
-  WiFi.beginSmartConfig();
-  Serial.println("配网中.");
-  while (!WiFi.smartConfigDone()) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  preferences.begin("wifi", false);
-  preferences.putString("ssid" , WiFi.SSID());
-  preferences.putString("password", WiFi.psk());
-  preferences.end();
-
-  Serial.println("配网完成，正在重启...");
-  delay(2000);
-  ESP.restart(); //重启ESP32
 }
 
 // 发送HTTP请求并且将服务器响应通过串口输出
@@ -795,7 +758,6 @@ void weaterData(String *cityDZ,String *dataSK,String *dataFC,String *dataSuggest
       clk.setTextDatum(CC_DATUM);
       clk.setTextColor(TFT_WHITE); 
       clk.drawString(dataWarnjson1["w5"].as<String>(),45,14);
-      //clk.drawString("预 警",45,45);
       clk.pushSprite(145,140);
       clk.deleteSprite();
       clk.unloadFont();
@@ -890,9 +852,6 @@ void scrollBanner(){
       }else{
         currentIndex += 1;  //准备切换到下一个  
       }
-      
-      //Serial.println(currentIndex);
-      
     }
     prevTime = millis();
     
