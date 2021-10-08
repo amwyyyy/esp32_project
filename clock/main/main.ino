@@ -280,7 +280,7 @@ void setup() {
   //Serial.println(Udp.localPort());
   //Serial.println("等待同步...");
   setSyncProvider(getNtpTime);
-  setSyncInterval(setNTPSyncTime*60); //NTP网络同步频率，单位秒。
+  setSyncInterval(setNTPSyncTime * 60); //NTP网络同步频率，单位秒。
  
   TJpgDec.setJpgScale(1);
   TJpgDec.setSwapBytes(true);
@@ -483,7 +483,6 @@ void getCityCode(){
 }
 
 // 获取城市天气
-bool warn_2 = false;
 int Warn_Number1 = 0,Warn_Value1 = 0,Warn_Number2 = 0,Warn_Value2 = 0,Warn_Flag = 1;
 void getCityWeater(){
   int OldConnectionTimes = millis(),NewConnectionTimes = 0;
@@ -704,7 +703,7 @@ void weaterData(String *cityDZ,String *dataSK,String *dataFC,String *dataSuggest
   scrollText[4] = "最低温度 "+fc["fd"].as<String>()+"℃";
   scrollText[5] = "最高温度 "+fc["fc"].as<String>()+"℃";
 
-  //scrollText[6] = "PM2.5 "+sk["aqi"].as<String>();
+  scrollText[6] = "PM2.5 "+sk["aqi_pm25"].as<String>();
   
   //Serial.println(scrollText[0]);
   clk.unloadFont(); //释放加载字体资源
