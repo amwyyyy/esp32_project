@@ -14,14 +14,18 @@
 
 // 图片资源
 #include "img/start_gif.h"
+#include "img/weather_code_jpg.h"
+#include "img/temperature.h"
+#include "img/humidity.h"
+#include "img/Gif/taikongren.h"
 
 #define TFT_BL 22
 
 Preferences preferences; 
 String ssid, pwd, cityCode;
 
-TFT_eSPI tft    = TFT_eSPI();  
-TFT_eSprite clk = TFT_eSprite(&tft);
+TFT_eSPI tft     = TFT_eSPI();  
+TFT_eSprite clk  = TFT_eSprite(&tft);
 
 // WiFi 连接计数
 int connectTimes = 0;
@@ -35,12 +39,14 @@ const long gmtOffset_sec  = 3600 * 8;
 
 // 天气相关
 String wendu = "", shidu = "";
-String scrollText[6]; // 滚动显示文字
+String scrollText[6]; // 滚动显示天气概况
+String suggestScrollText[9]; // 滚动显示天气建议
 
 struct {
   int year;
   int month;
   int day;
+  int week;
   int hour;
   int minute;
   int second;
@@ -60,10 +66,6 @@ TaskHandle_t xHandle_ntp_time = NULL;
 TaskHandle_t xHandle_get_weather = NULL;
 
 /** 定义任务 */
-// 连接 WiFi
-void TaskConnectWiFi(void *pvParameters);
-// WiFi 连接进度条
-void TaskLoading(void *pvParameters);
 // 同步时间
 void TaskNtpTime(void *pvParameters);
 // 显示时间
@@ -72,8 +74,6 @@ void TaskDisplayTime(void *pvParameters);
 void TaskGetCityCode(void *pvParameters);
 // 获取城市天气
 void TaskGetCityWeather(void *pvParameters);
-// 左上角信息滚动显示
-void TaskLeftScroll(void *pvParameters);
 
 // TFT 显示回调方法
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
@@ -103,8 +103,8 @@ void loading(byte delayTime, byte NUM){
   clk.drawString("正在连接 " + ssid + "...", 100, 40, 2);
   clk.pushSprite(20, 110);
   clk.deleteSprite();
-  vTaskDelay(delayTime);
-  clk.unloadFont(); //释放加载字体资源
+  clk.unloadFont();
+  delay(delayTime);
 }
 
 // 显示wifi连接失败，并重新进入配网模式
@@ -127,6 +127,7 @@ int getNowTime(){
   nowTime.year = timeinfo.tm_year + 1900;
   nowTime.month = timeinfo.tm_mon + 1;
   nowTime.day = timeinfo.tm_mday;
+  nowTime.week = timeinfo.tm_wday;
   nowTime.hour = timeinfo.tm_hour;
   nowTime.minute = timeinfo.tm_min;
   nowTime.second = timeinfo.tm_sec;
@@ -151,6 +152,8 @@ void drawGrid() {
 }
 
 void drawCityName(JsonObject sk) {
+  clk.setColorDepth(8);
+  clk.loadFont(ZdyLwFont_20);
   clk.createSprite(88, 32);
   clk.fillSprite(TFT_WHITE);
   clk.setTextDatum(CC_DATUM);
@@ -158,6 +161,7 @@ void drawCityName(JsonObject sk) {
   clk.drawString(sk["cityname"].as<String>(), 44, 18);
   clk.pushSprite(151, 1);
   clk.deleteSprite();
+  clk.unloadFont();
 }
 
 void drawPM25(JsonObject sk) {
@@ -185,6 +189,8 @@ void drawPM25(JsonObject sk) {
     aqiTxt = "优";
   }
 
+  clk.setColorDepth(8);
+  clk.loadFont(ZdyLwFont_20);
   clk.createSprite(50, 24); 
   clk.fillSprite(TFT_WHITE);
   clk.fillRoundRect(0, 0, 50, 24, 4, pm25BgColor);
@@ -193,6 +199,84 @@ void drawPM25(JsonObject sk) {
   clk.drawString(aqiTxt, 25, 14);
   clk.pushSprite(5, 140);
   clk.deleteSprite();
+  clk.unloadFont();
+}
+
+void drawWeatherIcon(JsonObject dz) {
+  String weatherCodeText = dz["weathercode"].as<String>();
+  int weatherCode = weatherCodeText.substring(1, weatherCodeText.length() + 1).toInt();
+
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(tft_output);
+
+  switch(weatherCode) {
+    case 0: TJpgDec.drawJpg(10, 105, d00_40X30, sizeof(d00_40X30));break;
+    case 1: TJpgDec.drawJpg(10, 105, d01_40X30, sizeof(d01_40X30));break;
+    case 2: TJpgDec.drawJpg(10, 105, d02_40X30, sizeof(d02_40X30));break;
+    case 3: TJpgDec.drawJpg(10, 105, d03_40X30, sizeof(d03_40X30));break;
+    case 4: TJpgDec.drawJpg(10, 105, d04_40X30, sizeof(d04_40X30));break;
+    case 5: TJpgDec.drawJpg(10, 105, d05_40X30, sizeof(d05_40X30));break;
+    case 6: TJpgDec.drawJpg(10, 105, d06_40X30, sizeof(d06_40X30));break;
+    case 7: TJpgDec.drawJpg(10, 105, d07_40X30, sizeof(d07_40X30));break;
+    case 8: TJpgDec.drawJpg(10, 105, d08_40X30, sizeof(d08_40X30));break;
+    case 9: TJpgDec.drawJpg(10, 105, d09_40X30, sizeof(d09_40X30));break;
+    case 10: TJpgDec.drawJpg(10, 105, d10_40X30, sizeof(d10_40X30));break;
+    case 11: TJpgDec.drawJpg(10, 105, d11_40X30, sizeof(d11_40X30));break;
+    case 12: TJpgDec.drawJpg(10, 105, d12_40X30, sizeof(d12_40X30));break;
+    case 13: TJpgDec.drawJpg(10, 105, d13_40X30, sizeof(d13_40X30));break;
+    case 14: TJpgDec.drawJpg(10, 105, d14_40X30, sizeof(d14_40X30));break;
+    case 15: TJpgDec.drawJpg(10, 105, d15_40X30, sizeof(d15_40X30));break;
+    case 16: TJpgDec.drawJpg(10, 105, d16_40X30, sizeof(d16_40X30));break;
+    case 17: TJpgDec.drawJpg(10, 105, d17_40X30, sizeof(d17_40X30));break;
+    case 18: TJpgDec.drawJpg(10, 105, d18_40X30, sizeof(d18_40X30));break;
+    case 19: TJpgDec.drawJpg(10, 105, d19_40X30, sizeof(d19_40X30));break;
+    case 20: TJpgDec.drawJpg(10, 105, d20_40X30, sizeof(d20_40X30));break;
+    case 21: TJpgDec.drawJpg(10, 105, d21_40X30, sizeof(d21_40X30));break;
+    case 22: TJpgDec.drawJpg(10, 105, d22_40X30, sizeof(d22_40X30));break;
+    case 23: TJpgDec.drawJpg(10, 105, d23_40X30, sizeof(d23_40X30));break;
+    case 24: TJpgDec.drawJpg(10, 105, d24_40X30, sizeof(d24_40X30));break;
+    case 25: TJpgDec.drawJpg(10, 105, d25_40X30, sizeof(d25_40X30));break;
+    case 26: TJpgDec.drawJpg(10, 105, d26_40X30, sizeof(d26_40X30));break;
+    case 27: TJpgDec.drawJpg(10, 105, d27_40X30, sizeof(d27_40X30));break;
+    case 28: TJpgDec.drawJpg(10, 105, d28_40X30, sizeof(d28_40X30));break;
+    case 29: TJpgDec.drawJpg(10, 105, d29_40X30, sizeof(d29_40X30));break;
+    case 30: TJpgDec.drawJpg(10, 105, d30_40X30, sizeof(d30_40X30));break;
+    case 31: TJpgDec.drawJpg(10, 105, d31_40X30, sizeof(d31_40X30));break;
+    case 32: TJpgDec.drawJpg(10, 105, d32_40X30, sizeof(d32_40X30));break;
+    case 33: TJpgDec.drawJpg(10, 105, d33_40X30, sizeof(d33_40X30));break;
+    case 49: TJpgDec.drawJpg(10, 105, d49_40X30, sizeof(d49_40X30));break;
+    case 53: TJpgDec.drawJpg(10, 105, d53_40X30, sizeof(d53_40X30));break;
+    case 54: TJpgDec.drawJpg(10, 105, d54_40X30, sizeof(d54_40X30));break;
+    case 55: TJpgDec.drawJpg(10, 105, d55_40X30, sizeof(d55_40X30));break;
+    case 56: TJpgDec.drawJpg(10, 105, d56_40X30, sizeof(d56_40X30));break;
+    case 57: TJpgDec.drawJpg(10, 105, d57_40X30, sizeof(d57_40X30));break;
+    case 58: TJpgDec.drawJpg(10, 105, d58_40X30, sizeof(d58_40X30));break;
+    case 301: TJpgDec.drawJpg(10, 105, d301_40X30, sizeof(d301_40X30));break;
+    case 302: TJpgDec.drawJpg(10, 105, d302_40X30, sizeof(d302_40X30));break;
+    default:break;
+  }
+}
+
+void weatherSuggest(JsonObject dataSuggestJson) {
+  // 路况
+  suggestScrollText[0] = dataSuggestJson["lk_name"].as<String>() + " " + dataSuggestJson["lk_hint"].as<String>();
+  // 晨练
+  suggestScrollText[1] = dataSuggestJson["cl_name"].as<String>() + " " + dataSuggestJson["cl_hint"].as<String>();
+  // 紫外线
+  suggestScrollText[2] = dataSuggestJson["uv_name"].as<String>() + " " + dataSuggestJson["uv_hint"].as<String>();
+  // 穿衣
+  suggestScrollText[3] = dataSuggestJson["ct_name"].as<String>() + " " + dataSuggestJson["ct_hint"].as<String>();
+  // 感冒
+  suggestScrollText[4] = dataSuggestJson["gm_name"].as<String>() + " " + dataSuggestJson["gm_hint"].as<String>();
+  // 雨伞
+  suggestScrollText[5] = dataSuggestJson["ys_name"].as<String>() + " " + dataSuggestJson["ys_hint"].as<String>();
+  // 干燥
+  suggestScrollText[6] = dataSuggestJson["gz_name"].as<String>() + " " + dataSuggestJson["gz_hint"].as<String>();
+  // 空调
+  suggestScrollText[7] = dataSuggestJson["ac_name"].as<String>() + " " + dataSuggestJson["ac_hint"].as<String>();
+  // 舒适度
+  suggestScrollText[8] = dataSuggestJson["co_name"].as<String>() + " " + dataSuggestJson["co_hint"].as<String>();
 }
 
 // 天气信息写到屏幕上
@@ -206,10 +290,6 @@ void drawWeaterData(String *cityDZ, String *dataSK, String *dataFC, String *data
   wendu = sk["temp"].as<String>();
   shidu = sk["SD"].as<String>();
 
-  /** 绘制相关文字 **/
-  clk.setColorDepth(8);
-  clk.loadFont(ZdyLwFont_20);
- 
   //城市名称
   drawCityName(sk);
 
@@ -217,36 +297,47 @@ void drawWeaterData(String *cityDZ, String *dataSK, String *dataFC, String *data
   drawPM25(sk);
 
   //左上角滚动字幕
-  String scrollText[6];
   scrollText[0] = "实时天气 " + sk["weather"].as<String>();
-  // scrollText[1] = "空气质量 " + aqiTxt;
-  scrollText[2] = "风向 " + sk["WD"].as<String>() + sk["WS"].as<String>();
-  scrollText[6] = "PM2.5 " + sk["aqi_pm25"].as<String>();
-  
+  scrollText[1] = "风向 " + sk["WD"].as<String>() + sk["WS"].as<String>();
+  scrollText[2] = "PM2.5 " + sk["aqi_pm25"].as<String>();
+
   deserializeJson(doc, *cityDZ);
   JsonObject dz = doc.as<JsonObject>();
   scrollText[3] = "今日 " + dz["weather"].as<String>();
-
-  // String weatherCodeText = dz["weathercode"].as<String>();
-  // weatherCode = weatherCodeText.substring(1, weatherCodeText.length() + 1).toInt();
+  //  天气图标
+  drawWeatherIcon(dz);
 
   deserializeJson(doc, *dataFC);
   JsonObject fc = doc.as<JsonObject>();
   scrollText[4] = "最低温度 " + fc["fd"].as<String>() + "℃";
   scrollText[5] = "最高温度 " + fc["fc"].as<String>() + "℃";
 
-  xTaskCreatePinnedToCore(TaskLeftScroll, "TaskLeftScroll", 1024 * 4, (void *) scrollText, 4, NULL, ARDUINO_RUNNING_CORE);
+  // 天气建议
+  deserializeJson(doc, *dataSuggest);
+  JsonObject dataSuggestJson = doc.as<JsonObject>();
+  weatherSuggest(dataSuggestJson);
 }
 
-void TaskConnectWiFi(void *pvParameters) {
+// 星期
+String week() {
+  String wk[7] = {"日", "一", "二", "三", "四", "五", "六"};
+  String s = "周" + wk[nowTime.week - 1];
+  return s;
+}
+
+String monthDay() {
+  String s = String(nowTime.month) + "月" + String(nowTime.day) + "日";
+  return s;
+}
+
+void connectWiFi() {
   Serial.println("正在连接 " + ssid + "...");
   WiFi.begin(ssid.c_str(), pwd.c_str());
 
   while (WiFi.status() != WL_CONNECTED) {
-    vTaskDelay(100);
+    loading(100, 1);
     connectTimes++;
     if(connectTimes >= 190) {
-      vTaskDelete(xHandle_loading);
       displayConnectWifiFalse();
       preferences.clear();
       ESP.restart();
@@ -256,58 +347,25 @@ void TaskConnectWiFi(void *pvParameters) {
   Serial.print("本地IP： ");
   Serial.println(WiFi.localIP());
 
-  // 连接WiFi后同步网络时间
-  xTaskCreatePinnedToCore(TaskNtpTime, "TaskNtpTime", 1024 * 2, NULL, 3, &xHandle_ntp_time, ARDUINO_RUNNING_CORE);
-  // 获取城市编码
-  xTaskCreatePinnedToCore(TaskGetCityCode, "TaskGetCityCode", 1024 * 4, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
-
-  vTaskDelete(NULL);
-}
-
-void TaskLoading(void *pvParameters) {
-  // 显示连接动画
-  while (WiFi.status() != WL_CONNECTED) {
-    loading(100, 1);
-  }
-
   // 让动画走完
   while(loadNum < 192 & connectTimes < 190){
     loading(0, 5);
   }
-
-  // 绘制网格
-  drawGrid();
-
-  vTaskDelete(NULL);
 }
 
-void TaskNtpTime(void *pvParameters) {
-  for(;;) {
-    int t = 0;
-    do {
-      configTime(gmtOffset_sec, 0, ntpServer1, ntpServer2, ntpServer3);
-      vTaskDelay(200);
-      t = getNowTime();
-    } while (t == 0);
-    Serial.println("config ntp time finish!");
-
-    xTaskCreatePinnedToCore(TaskDisplayTime, "TaskDisplayTime", 1024 * 4, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
-    vTaskSuspend(xHandle_ntp_time);
-  }
-}
-
-void TaskDisplayTime(void *pvParameters) {
+long dt = millis();
+void displayTime() {
   // 接收格式化字符串
   char *hm = (char *) malloc(6);
   char *sec = (char *) malloc(2);
 
-  for(;;) {
-    getNowTime();
+  if (getNowTime() != 0 && (millis() - dt > 200)) {
     sprintf(hm, "%02d:%02d", nowTime.hour, nowTime.minute);
     sprintf(sec, "%02d", nowTime.second);
 
-    // 时分
     clk.setColorDepth(8);
+
+    // 时分
     clk.createSprite(140, 48);
     clk.fillSprite(TFT_WHITE);
     clk.setTextDatum(CC_DATUM);
@@ -323,11 +381,146 @@ void TaskDisplayTime(void *pvParameters) {
     clk.setTextDatum(CC_DATUM);
     clk.setTextColor(TFT_BLACK, TFT_WHITE); 
     clk.drawString(sec, 20, 12);
-    clk.unloadFont();
     clk.pushSprite(170, 55);
     clk.deleteSprite();
+    clk.unloadFont();
 
-    vTaskDelay(250);
+    //星期
+    clk.loadFont(ZdyLwFont_20);
+    clk.createSprite(58, 32);
+    clk.fillSprite(TFT_WHITE);
+    clk.setTextDatum(CC_DATUM);
+    clk.setTextColor(TFT_BLACK, TFT_WHITE);
+    clk.drawString(week(), 29, 16);
+    clk.pushSprite(1, 168);
+    clk.deleteSprite();
+
+    //月日
+    clk.createSprite(98, 32);
+    clk.fillSprite(TFT_WHITE);
+    clk.setTextDatum(CC_DATUM);
+    clk.setTextColor(TFT_BLACK, TFT_WHITE);  
+    clk.drawString(monthDay(), 49, 16);
+    clk.pushSprite(61, 168);
+    clk.deleteSprite();
+    clk.unloadFont();
+
+    dt = millis();
+  }
+}
+
+long top = millis(), bottom = millis(), wsd = millis();
+int top_index = 0, bottom_index = 0, wsd_index = 0;
+void displayScroll() {
+  // 左上角滚动信息
+  if (scrollText->length() > 0) {
+    if (millis() - top > 3500) {
+      clk.loadFont(ZdyLwFont_20);
+      clk.createSprite(148, 24); 
+      clk.fillSprite(TFT_WHITE);
+      clk.setTextWrap(false);
+      clk.setTextDatum(CC_DATUM);
+      clk.setTextColor(TFT_BLACK, TFT_WHITE); 
+      clk.drawString(scrollText[top_index++], 74, 14);
+      clk.pushSprite(2, 4);
+      clk.deleteSprite();
+      clk.unloadFont();
+
+      top = millis();
+      if (top_index > 5) {
+        top_index = 0;
+      }
+    }
+  }
+
+  // 底部滚动信息
+  if (suggestScrollText->length() > 0) {
+    if (millis() - bottom > 5000) {
+      clk.loadFont(ZdyLwFont_20);
+      clk.createSprite(240, 40); 
+      clk.fillSprite(TFT_WHITE);
+      clk.setTextDatum(CC_DATUM);
+      clk.setTextColor(TFT_BLACK, TFT_WHITE); 
+      clk.drawString(suggestScrollText[bottom_index++], 120, 20);
+      clk.pushSprite(0, 201);
+      clk.deleteSprite();
+      clk.unloadFont();
+
+      bottom = millis();
+      if (bottom_index > 8) {
+        bottom_index = 0;
+      }
+    }
+  }
+
+  // 温度湿度
+  if (millis() - wsd > 6000) {
+    clk.loadFont(ZdyLwFont_20);
+    if (wsd_index == 0) {
+      TJpgDec.drawJpg(165, 171, temperature, sizeof(temperature));
+      for(int pos = 20; pos > 0; pos-=2) {
+        clk.createSprite(50, 32); 
+        clk.fillSprite(TFT_WHITE);
+        clk.setTextDatum(CC_DATUM);
+        clk.setTextColor(TFT_BLACK, TFT_WHITE); 
+        clk.drawString(wendu + "℃", 25, pos + 16);
+        clk.pushSprite(188, 168);
+        vTaskDelay(10);
+      }
+      wsd_index = 1;
+    } else {
+      TJpgDec.drawJpg(165, 171, humidity, sizeof(humidity));  //湿度图标
+      for(int pos = 20; pos > 0; pos-=2) {
+        clk.createSprite(50, 32); 
+        clk.fillSprite(TFT_WHITE);
+        clk.setTextDatum(CC_DATUM);
+        clk.setTextColor(TFT_BLACK, TFT_WHITE);   
+        clk.drawString(shidu, 25, pos + 16);
+        clk.pushSprite(188, 168);
+        vTaskDelay(10);
+      }
+      wsd_index = 0;
+    }
+    clk.deleteSprite();
+    clk.unloadFont();
+    wsd = millis();
+  }
+}
+
+int imgNum = 1;
+long tImg = millis();
+void displayImage() {
+  int x = 70;
+  int y = 94;
+
+  if (millis() - tImg > 100) {
+    switch(imgNum++) {
+      case 1: TJpgDec.drawJpg(x, y, i0, sizeof(i0));break;
+      case 2: TJpgDec.drawJpg(x, y, i1, sizeof(i1));break;
+      case 3: TJpgDec.drawJpg(x, y, i2, sizeof(i2));break;
+      case 4: TJpgDec.drawJpg(x, y, i3, sizeof(i3));break;
+      case 5: TJpgDec.drawJpg(x, y, i4, sizeof(i4));break;
+      case 6: TJpgDec.drawJpg(x, y, i5, sizeof(i5));break;
+      case 7: TJpgDec.drawJpg(x, y, i6, sizeof(i6));break;
+      case 8: TJpgDec.drawJpg(x, y, i7, sizeof(i7));break;
+      case 9: TJpgDec.drawJpg(x, y, i8, sizeof(i8));break;
+      case 10: TJpgDec.drawJpg(x, y, i9, sizeof(i9));imgNum = 1;break;
+    }
+    tImg = millis();
+  }
+}
+
+void TaskNtpTime(void *pvParameters) {
+  for(;;) {
+    int t = 0;
+    do {
+      configTime(gmtOffset_sec, 0, ntpServer1, ntpServer2, ntpServer3);
+      vTaskDelay(200);
+      t = getNowTime();
+    } while (t == 0);
+    Serial.println("config ntp time finish!");
+
+    vTaskDelete(NULL);
   }
 }
 
@@ -373,7 +566,7 @@ void TaskGetCityCode(void *pvParameters) {
     vTaskDelay(200);
   }
 
-  xTaskCreatePinnedToCore(TaskGetCityWeather, "TaskGetCityWeather", 1024 * 4, NULL, 4, &xHandle_get_weather, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskGetCityWeather, "TaskGetCityWeather", 1024 * 4, NULL, 2, &xHandle_get_weather, ARDUINO_RUNNING_CORE);
 
   vTaskDelete(NULL);
 }
@@ -426,7 +619,8 @@ void TaskGetCityWeather(void *pvParameters) {
       drawWeaterData(&jsonCityDZ, &jsonDataSK, &jsonFC, &jsonSuggest, &jsonDataWarn1);
       Serial.println("天气数据获取成功");
       httpClient.end();
-      vTaskSuspend(xHandle_get_weather);
+
+      vTaskDelete(NULL);
     } else {
       Serial.print("请求城市天气错误：");
       Serial.println(String(httpCode) + " 正在重新获取...");
@@ -434,12 +628,6 @@ void TaskGetCityWeather(void *pvParameters) {
     
     vTaskDelay(200);
   }
-}
-
-void TaskLeftScroll(void *pvParameters) {
-  String *scrollText = (String *) pvParameters;
-  Serial.println(scrollText[0]);
-  vTaskDelete(NULL);
 }
 
 void setup() {
@@ -470,11 +658,21 @@ void setup() {
     // TODO 配网
   }
 
-  xTaskCreatePinnedToCore(TaskConnectWiFi, "TaskConnectWiFi", 1024 * 2, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
+  // 连接WiFi
+  connectWiFi();
 
-  xTaskCreatePinnedToCore(TaskLoading, "TaskLoading", 1024 * 4, NULL, 4, &xHandle_loading, ARDUINO_RUNNING_CORE);
+  // 绘制网格
+  drawGrid();
+
+  // 连接WiFi后同步网络时间
+  xTaskCreatePinnedToCore(TaskNtpTime, "TaskNtpTime", 1024 * 2, NULL, 2, &xHandle_ntp_time, ARDUINO_RUNNING_CORE);
+  // 获取城市编码
+  xTaskCreatePinnedToCore(TaskGetCityCode, "TaskGetCityCode", 1024 * 4, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
 }
 
 void loop() {
-
+  displayTime();
+  displayScroll();
+  displayImage();
+  delay(50);
 }

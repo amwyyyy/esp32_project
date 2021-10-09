@@ -573,17 +573,14 @@ void getLunarCalendar() {
     }
 }
 
-String scrollText[6];
-String ButtonScrollText[8];
-//int scrollTextWidth = 0;
+String scrollText[7];
+String ButtonScrollText[9];
+
 //天气信息写到屏幕上
 void weaterData(String *cityDZ,String *dataSK,String *dataFC,String *dataSuggest,String *dataWarn1){
-  
   DynamicJsonDocument doc(8192);
   deserializeJson(doc, *dataSK);
   JsonObject sk = doc.as<JsonObject>();
-
-  //TFT_eSprite clkb = TFT_eSprite(&tft);
   
   /***绘制相关文字***/
   clk.setColorDepth(8);
@@ -702,24 +699,30 @@ void weaterData(String *cityDZ,String *dataSK,String *dataFC,String *dataSuggest
   
   scrollText[4] = "最低温度 "+fc["fd"].as<String>()+"℃";
   scrollText[5] = "最高温度 "+fc["fc"].as<String>()+"℃";
-
-  scrollText[6] = "PM2.5 "+sk["aqi_pm25"].as<String>();
+  scrollText[6] = "PM2.5 "+sk["aqi"].as<String>();
   
-  //Serial.println(scrollText[0]);
   clk.unloadFont(); //释放加载字体资源
 
   deserializeJson(doc, *dataSuggest);
   JsonObject dataSuggestJson = doc.as<JsonObject>();
+  // 路况
   ButtonScrollText[0] = dataSuggestJson["lk_name"].as<String>() + " " + dataSuggestJson["lk_hint"].as<String>();
+  // 晨练
   ButtonScrollText[1] = dataSuggestJson["cl_name"].as<String>() + " " + dataSuggestJson["cl_hint"].as<String>();
+  // 紫外线
   ButtonScrollText[2] = dataSuggestJson["uv_name"].as<String>() + " " + dataSuggestJson["uv_hint"].as<String>();
+  // 穿衣
   ButtonScrollText[3] = dataSuggestJson["ct_name"].as<String>() + " " + dataSuggestJson["ct_hint"].as<String>();
+  // 感冒
   ButtonScrollText[4] = dataSuggestJson["gm_name"].as<String>() + " " + dataSuggestJson["gm_hint"].as<String>();
+  // 雨伞
   ButtonScrollText[5] = dataSuggestJson["ys_name"].as<String>() + " " + dataSuggestJson["ys_hint"].as<String>();
-  //ButtonScrollText[6] = dataSuggestJson["gz_name"].as<String>() + " " + dataSuggestJson["gz_hint"].as<String>();
-  //ButtonScrollText[6] = dataSuggestJson["cl_name"].as<String>() + " " + dataSuggestJson["cl_hint"].as<String>();
-  ButtonScrollText[6] = dataSuggestJson["pl_name"].as<String>() + " " + dataSuggestJson["pl_hint"].as<String>();
-  ButtonScrollText[7] = dataSuggestJson["co_name"].as<String>() + " " + dataSuggestJson["co_hint"].as<String>();
+  // 干燥
+  ButtonScrollText[6] = dataSuggestJson["gz_name"].as<String>() + " " + dataSuggestJson["gz_hint"].as<String>();
+  // 空调
+  ButtonScrollText[7] = dataSuggestJson["ac_name"].as<String>() + " " + dataSuggestJson["ac_hint"].as<String>();
+  // 舒适度
+  ButtonScrollText[8] = dataSuggestJson["co_name"].as<String>() + " " + dataSuggestJson["co_hint"].as<String>();
 
   deserializeJson(doc, *dataWarn1);
   JsonObject dataWarnjson1 = doc.as<JsonObject>();
@@ -846,7 +849,7 @@ void scrollBanner(){
       clkb.deleteSprite();
       clkb.unloadFont();
   
-      if(currentIndex>=5){
+      if(currentIndex>=6){
         currentIndex = 0;  //回第一个
       }else{
         currentIndex += 1;  //准备切换到下一个  
@@ -893,24 +896,18 @@ void ButtonscrollBanner(){
       }else{
         ButtoncurrentIndex += 1;  //准备切换到下一个  
       }
-      
-      //Serial.println(ButtoncurrentIndex);
-      
     }
     ButtonprevTime = millis();
   }
 }
 
 void ButtonScrollTxt(int pos){
-  //clkbb.loadFont(ZdyLwFont_20);
   clkbb.createSprite(240, 40); 
   clkbb.fillSprite(bgColor);
   clkbb.setTextDatum(CC_DATUM);
   clkbb.setTextColor(TFT_BLACK, bgColor); 
   clkbb.drawString(ButtonScrollText[ButtoncurrentIndex], 120, pos + 20);
   clkbb.pushSprite(0, 201);
-  //clkbb.deleteSprite();
-  //clkbb.unloadFont(); //释放加载字体资源
 }
 
 unsigned long oldTime = 0,imgNum = 1;
@@ -1029,17 +1026,17 @@ void imgDisplay(){
   }
   else if(Gif_Mode == 3) { //动画-太空人
     switch(imgNum) {
-        case 1: TJpgDec.drawJpg(x, y, i0, sizeof(i0));break;
-        case 2: TJpgDec.drawJpg(x, y, i1, sizeof(i1));break;
-        case 3: TJpgDec.drawJpg(x, y, i2, sizeof(i2));break;
-        case 4: TJpgDec.drawJpg(x, y, i3, sizeof(i3));break;
-        case 5: TJpgDec.drawJpg(x, y, i4, sizeof(i4));break;
-        case 6: TJpgDec.drawJpg(x, y, i5, sizeof(i5));break;
-        case 7: TJpgDec.drawJpg(x, y, i6, sizeof(i6));break;
-        case 8: TJpgDec.drawJpg(x, y, i7, sizeof(i7));break;
-        case 9: TJpgDec.drawJpg(x, y, i8, sizeof(i8));break;
-        case 10: TJpgDec.drawJpg(x, y, i9, sizeof(i9));imgNum=1;break;
-      }
+      case 1: TJpgDec.drawJpg(x, y, i0, sizeof(i0));break;
+      case 2: TJpgDec.drawJpg(x, y, i1, sizeof(i1));break;
+      case 3: TJpgDec.drawJpg(x, y, i2, sizeof(i2));break;
+      case 4: TJpgDec.drawJpg(x, y, i3, sizeof(i3));break;
+      case 5: TJpgDec.drawJpg(x, y, i4, sizeof(i4));break;
+      case 6: TJpgDec.drawJpg(x, y, i5, sizeof(i5));break;
+      case 7: TJpgDec.drawJpg(x, y, i6, sizeof(i6));break;
+      case 8: TJpgDec.drawJpg(x, y, i7, sizeof(i7));break;
+      case 9: TJpgDec.drawJpg(x, y, i8, sizeof(i8));break;
+      case 10: TJpgDec.drawJpg(x, y, i9, sizeof(i9));imgNum=1;break;
+    }
   }
   else if(Gif_Mode == 2) { //动画-耍杂技
     y = 86;
