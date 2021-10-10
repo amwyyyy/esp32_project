@@ -4,7 +4,7 @@
 #include <U8g2lib.h>
 #include <DHTesp.h>
 #include <Preferences.h>
-#include <images.h>
+#include "images.h"
 #include <WebServer.h>
 #include <uri/UriBraces.h>
 
@@ -117,23 +117,23 @@ void drawWeatherSymbol(u8g2_uint_t x, u8g2_uint_t y, uint8_t symbol) {
   switch(symbol)
   {
     case SUN:
-      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 69);  
       break;
     case SUN_CLOUD:
-      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 65); 
       break;
     case CLOUD:
-      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 64); 
       break;
     case RAIN:
-      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 67); 
       break;
     case THUNDER:
-      u8g2.setFont(u8g2_font_open_iconic_weather_1x_t);
+      u8g2.setFont(u8g2_font_open_iconic_weather_2x_t);
       u8g2.drawGlyph(x, y, 67);
       break;      
   }
@@ -290,18 +290,25 @@ void TaskUpdateData(void *pvParameters) {
 void TaskDrawLocalTime(void *pvParameters) {
   (void) pvParameters;
 
+  int p = 0;
   while(initFlag == 0) {
     u8g2.firstPage();
     do {
-      u8g2.setFont(u8g2_font_7x14_tr);
-      u8g2.drawStr(20, 20, "System init.");
+      if (p++ >= 104) {
+        p = 104;
+      }
+      u8g2.drawRFrame(10, 30, 105, 8, 2);
+      u8g2.drawRBox(11, 31, p, 6, 2);
+      u8g2.setFont(u8g2_font_profont11_tr);
+      u8g2.drawStr(10, 50, "Connecting WiFi...");
     } while (u8g2.nextPage());
-    vTaskDelay(200);
+    vTaskDelay(500);
   }
 
   // 接收格式化字符串
   char *ld     = (char *) malloc(11);
-  char *lt     = (char *) malloc(10);
+  char *lt     = (char *) malloc(6);
+  char *second = (char *) malloc(3);
   char *temper = (char *) malloc(6);
   char *humid  = (char *) malloc(5);
   char *weaStr = (char *) malloc(11);
@@ -310,31 +317,38 @@ void TaskDrawLocalTime(void *pvParameters) {
     initLocalTime();
     u8g2.firstPage();
     do {
-      if (viewFlag) {
-        if (atoi(weather.high.c_str()) == 0) {
-          sprintf(weaStr, "%s°C", weather.low);
-        } else {
-          sprintf(weaStr, "%s/%s°C", weather.low, weather.high);
-        }
-        u8g2.setFont(u8g2_font_profont11_tf);
-        u8g2.drawUTF8(15, 12, weaStr);
-        drawWeatherSymbol(1, 12, weather.symbol);
+      if (atoi(weather.high.c_str()) == 0) {
+        sprintf(weaStr, "%s°C", weather.low);
       } else {
-        u8g2.setFont(u8g2_font_profont11_tf);
-        sprintf(temper, "%0.1f°C", newValues.temperature);
-        u8g2.drawUTF8(3, 12, temper);
-      
-        sprintf(humid, " / %0.0f%%", newValues.humidity);
-        u8g2.drawUTF8(40, 12, humid);
+        sprintf(weaStr, "%s/%s°C", weather.low, weather.high);
       }
+      u8g2.setFont(u8g2_font_profont11_tf);
+      u8g2.drawUTF8(98, 13, weaStr);
+      drawWeatherSymbol(78, 16, weather.symbol);
+  
+      u8g2.setFont(u8g2_font_profont11_tf);
+      sprintf(temper, "%0.1f°C", newValues.temperature);
+      u8g2.drawUTF8(2, 13, temper);
+    
+      sprintf(humid, "%0.0f%%", newValues.humidity);
+      u8g2.drawUTF8(48, 13, humid);
+
+      u8g2.drawVLine(45, 0, 18);
+      u8g2.drawVLine(70, 0, 18);
+      u8g2.drawHLine(0, 18, 128);
+      u8g2.drawHLine(0, 51, 128);
 
       u8g2.setFont(u8g2_font_lubB18_tr);
-      sprintf(lt, "%02d:%02d:%02d", now.hour, now.minute, now.second);
-      u8g2.drawStr(12, 43, lt);
+      sprintf(lt, "%02d:%02d", now.hour, now.minute);
+      u8g2.drawStr(22, 45, lt);
+
+      u8g2.setFont(u8g2_font_8x13B_tr);
+      sprintf(second, "%02d", now.second);
+      u8g2.drawStr(98, 45, second);
 
       u8g2.setFont(u8g2_font_profont11_tr);
       sprintf(ld, "%d.%02d.%02d", now.year, now.month, now.day);
-      u8g2.drawStr(68, 60, ld);
+      u8g2.drawStr(35, 60, ld);
     } while (u8g2.nextPage());
     vTaskDelay(200);
   }

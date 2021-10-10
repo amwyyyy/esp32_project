@@ -321,7 +321,7 @@ void drawWeaterData(String *cityDZ, String *dataSK, String *dataFC, String *data
 // 星期
 String week() {
   String wk[7] = {"日", "一", "二", "三", "四", "五", "六"};
-  String s = "周" + wk[nowTime.week - 1];
+  String s = "周" + wk[nowTime.week];
   return s;
 }
 
@@ -354,12 +354,11 @@ void connectWiFi() {
 }
 
 long dt = millis();
-void displayTime() {
-  // 接收格式化字符串
-  char *hm = (char *) malloc(6);
-  char *sec = (char *) malloc(2);
+char *hm = (char *) malloc(6);
+char *sec = (char *) malloc(3);
 
-  if (getNowTime() != 0 && (millis() - dt > 200)) {
+void displayTime(long now) {
+  if (getNowTime() != 0 && (now - dt > 200)) {
     sprintf(hm, "%02d:%02d", nowTime.hour, nowTime.minute);
     sprintf(sec, "%02d", nowTime.second);
 
@@ -411,10 +410,10 @@ void displayTime() {
 
 long top = millis(), bottom = millis(), wsd = millis();
 int top_index = 0, bottom_index = 0, wsd_index = 0;
-void displayScroll() {
+void displayScroll(long now) {
   // 左上角滚动信息
   if (scrollText->length() > 0) {
-    if (millis() - top > 3500) {
+    if (now - top > 3500) {
       clk.loadFont(ZdyLwFont_20);
       clk.createSprite(148, 24); 
       clk.fillSprite(TFT_WHITE);
@@ -435,7 +434,7 @@ void displayScroll() {
 
   // 底部滚动信息
   if (suggestScrollText->length() > 0) {
-    if (millis() - bottom > 5000) {
+    if (now - bottom > 5000) {
       clk.loadFont(ZdyLwFont_20);
       clk.createSprite(240, 40); 
       clk.fillSprite(TFT_WHITE);
@@ -454,7 +453,7 @@ void displayScroll() {
   }
 
   // 温度湿度
-  if (millis() - wsd > 6000) {
+  if (now - wsd > 6000) {
     clk.loadFont(ZdyLwFont_20);
     if (wsd_index == 0) {
       TJpgDec.drawJpg(165, 171, temperature, sizeof(temperature));
@@ -489,11 +488,11 @@ void displayScroll() {
 
 int imgNum = 1;
 long tImg = millis();
-void displayImage() {
-  int x = 70;
+void displayImage(long now) {
+  int x = 80;
   int y = 94;
 
-  if (millis() - tImg > 100) {
+  if (now - tImg > 100) {
     switch(imgNum++) {
       case 1: TJpgDec.drawJpg(x, y, i0, sizeof(i0));break;
       case 2: TJpgDec.drawJpg(x, y, i1, sizeof(i1));break;
@@ -650,7 +649,7 @@ void setup() {
   // pwd =  preferences.getString("password", "none");
   // cityCode = preferences.getString("citycode", "none");
   // preferences.end();
-  cityCode = "none";
+  cityCode = "101280601";
   ssid = "xiongda";
   pwd = "15999554794";
 
@@ -671,8 +670,9 @@ void setup() {
 }
 
 void loop() {
-  displayTime();
-  displayScroll();
-  displayImage();
-  delay(50);
+  int now = millis();
+  displayTime(now);
+  displayScroll(now);
+  displayImage(now);
+  delay(10);
 }
