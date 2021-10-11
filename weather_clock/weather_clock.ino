@@ -398,7 +398,7 @@ void TaskDisplayQRCode(void *pvParameters) {
 
 // 配置 WiFi 账号密码
 void configWiFi() {
-  xTaskCreatePinnedToCore(TaskDisplayQRCode, "TaskDisplayQRCode", 1024 * 4, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreate(TaskDisplayQRCode, "TaskDisplayQRCode", 1024 * 4, NULL, 3, NULL);
 
   const char *ssidd = "esp32-clock";
   WiFi.softAP(ssidd);
