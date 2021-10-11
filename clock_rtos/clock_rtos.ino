@@ -564,7 +564,7 @@ void TaskGetCityCode(void *pvParameters) {
     vTaskDelay(50);
   }
 
-  xTaskCreate(TaskGetCityWeather, "TaskGetCityWeather", 1024, NULL, 2, &xHandle_get_weather);
+  xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, &xHandle_get_weather, 1);
 
   vTaskDelete(NULL);
 }
@@ -630,50 +630,6 @@ void TaskGetCityWeather(void *pvParameters) {
   }
 }
 
-void TaskSerial(void *pvParameters) {
-  for(;;) {
-    Serial.println("======== Tasks status ========");
-    Serial.print("Tick count: ");
-    Serial.print(xTaskGetTickCount());
-    Serial.print(", Task count: ");
-    Serial.print(uxTaskGetNumberOfTasks());
-
-    Serial.println();
-    Serial.println();
-
-    // Serial task status
-    Serial.print("- TASK ");
-    Serial.print(pcTaskGetName(NULL)); // Get task name without handler https://www.freertos.org/a00021.html#pcTaskGetName
-    Serial.print(", High Watermark: ");
-    Serial.print(uxTaskGetStackHighWaterMark(NULL)); // https://www.freertos.org/uxTaskGetStackHighWaterMark.html 
-
-    TaskHandle_t taskSerialHandle = xTaskGetCurrentTaskHandle(); // Get current task handle. https://www.freertos.org/a00021.html#xTaskGetCurrentTaskHandle
-
-    Serial.println();
-    Serial.print("- TASK ");
-    Serial.print(pcTaskGetName(xHandle_ntp_time)); // Get task name with handler
-    Serial.print(", High Watermark: ");
-    Serial.print(uxTaskGetStackHighWaterMark(xHandle_ntp_time));
-    Serial.println();
-
-    Serial.print("- TASK ");
-    Serial.print(pcTaskGetName(xHandle_get_city_code));
-    Serial.print(", High Watermark: ");
-    Serial.print(uxTaskGetStackHighWaterMark(xHandle_get_city_code));
-    Serial.println();
-
-    Serial.print("- TASK ");
-    Serial.print(pcTaskGetName(xHandle_get_weather));
-    Serial.print(", High Watermark: ");
-    Serial.print(uxTaskGetStackHighWaterMark(xHandle_get_weather));
-    Serial.println();
-
-    Serial.println();
-    
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-  }
-}
-
 void setup() {
   Serial.begin(115200);
 
@@ -709,11 +665,9 @@ void setup() {
   drawGrid();
 
   // 连接WiFi后同步网络时间
-  xTaskCreate(TaskNtpTime, "TaskNtpTime", 1024, NULL, 3, &xHandle_ntp_time);
+  xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, NULL, 3, &xHandle_ntp_time, 0);
   // 获取城市编码
-  xTaskCreate(TaskGetCityCode, "TaskGetCityCode", 1024, NULL, 2, &xHandle_get_city_code);
-
-  xTaskCreate(TaskSerial, "TaskSerial", 128, NULL, 3, NULL);
+  xTaskCreatePinnedToCore(TaskGetCityCode, "GetCityCode", 1024 * 4, NULL, 2, &xHandle_get_city_code, 1);
 }
 
 void loop() {
