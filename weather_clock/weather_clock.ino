@@ -400,8 +400,14 @@ void TaskDisplayQRCode(void *pvParameters) {
 void configWiFi() {
   xTaskCreate(TaskDisplayQRCode, "TaskDisplayQRCode", 1024 * 4, NULL, 3, NULL);
 
+  const byte DNS_PORT = 53; //DNS端口号
+  IPAddress apIP(192, 168, 4, 1); //esp32-AP-IP地址
   const char *ssidd = "esp32-clock";
+  WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   WiFi.softAP(ssidd);
+  dnsServer.start(DNS_PORT, "*", apIP)
+  
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
@@ -420,7 +426,7 @@ void configWiFi() {
     }
   });
 
-  server.on("/", []() {
+  server.on("/", HTTP_GET, []() {
     server.send(200, "text/html", html);
   });
   
