@@ -61,15 +61,13 @@ struct {
 } warn;
 
 // 任务句柄
-TaskHandle_t xHandle_loading = NULL;
-TaskHandle_t xHandle_ntp_time = NULL;
-TaskHandle_t xHandle_get_weather = NULL;
+TaskHandle_t xHandle_get_city_code;
+TaskHandle_t xHandle_ntp_time;
+TaskHandle_t xHandle_get_weather;
 
 /** 定义任务 */
 // 同步时间
 void TaskNtpTime(void *pvParameters);
-// 显示时间
-void TaskDisplayTime(void *pvParameters);
 // 获取城市编码
 void TaskGetCityCode(void *pvParameters);
 // 获取城市天气
@@ -356,7 +354,6 @@ void connectWiFi() {
 long dt = millis();
 char *hm = (char *) malloc(6);
 char *sec = (char *) malloc(3);
-
 void displayTime(long now) {
   if (getNowTime() != 0 && (now - dt > 200)) {
     sprintf(hm, "%02d:%02d", nowTime.hour, nowTime.minute);
@@ -540,6 +537,8 @@ void TaskGetCityCode(void *pvParameters) {
     int httpCode = httpClient.GET();
     Serial.println("数据请求中...");
 
+    vTaskDelay(200);
+
     //如果服务器响应OK则从服务器获取响应体信息并通过串口输出
     if (httpCode == HTTP_CODE_OK) {
       String str = httpClient.getString();
@@ -562,10 +561,10 @@ void TaskGetCityCode(void *pvParameters) {
       ESP.restart();
     }
 
-    vTaskDelay(200);
+    vTaskDelay(50);
   }
 
-  xTaskCreatePinnedToCore(TaskGetCityWeather, "TaskGetCityWeather", 1024 * 4, NULL, 2, &xHandle_get_weather, ARDUINO_RUNNING_CORE);
+  xTaskCreate(TaskGetCityWeather, "TaskGetCityWeather", 1024, NULL, 2, &xHandle_get_weather);
 
   vTaskDelete(NULL);
 }
@@ -585,6 +584,8 @@ void TaskGetCityWeather(void *pvParameters) {
     int httpCode = httpClient.GET();
     Serial.println("正在获取天气数据");
     Serial.println(URL);
+
+    vTaskDelay(200);
 
     if (httpCode == HTTP_CODE_OK) {
       String str = httpClient.getString();
@@ -625,7 +626,51 @@ void TaskGetCityWeather(void *pvParameters) {
       Serial.println(String(httpCode) + " 正在重新获取...");
     }
     
-    vTaskDelay(200);
+    vTaskDelay(50);
+  }
+}
+
+void TaskSerial(void *pvParameters) {
+  for(;;) {
+    Serial.println("======== Tasks status ========");
+    Serial.print("Tick count: ");
+    Serial.print(xTaskGetTickCount());
+    Serial.print(", Task count: ");
+    Serial.print(uxTaskGetNumberOfTasks());
+
+    Serial.println();
+    Serial.println();
+
+    // Serial task status
+    Serial.print("- TASK ");
+    Serial.print(pcTaskGetName(NULL)); // Get task name without handler https://www.freertos.org/a00021.html#pcTaskGetName
+    Serial.print(", High Watermark: ");
+    Serial.print(uxTaskGetStackHighWaterMark(NULL)); // https://www.freertos.org/uxTaskGetStackHighWaterMark.html 
+
+    TaskHandle_t taskSerialHandle = xTaskGetCurrentTaskHandle(); // Get current task handle. https://www.freertos.org/a00021.html#xTaskGetCurrentTaskHandle
+
+    Serial.println();
+    Serial.print("- TASK ");
+    Serial.print(pcTaskGetName(xHandle_ntp_time)); // Get task name with handler
+    Serial.print(", High Watermark: ");
+    Serial.print(uxTaskGetStackHighWaterMark(xHandle_ntp_time));
+    Serial.println();
+
+    Serial.print("- TASK ");
+    Serial.print(pcTaskGetName(xHandle_get_city_code));
+    Serial.print(", High Watermark: ");
+    Serial.print(uxTaskGetStackHighWaterMark(xHandle_get_city_code));
+    Serial.println();
+
+    Serial.print("- TASK ");
+    Serial.print(pcTaskGetName(xHandle_get_weather));
+    Serial.print(", High Watermark: ");
+    Serial.print(uxTaskGetStackHighWaterMark(xHandle_get_weather));
+    Serial.println();
+
+    Serial.println();
+    
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
   }
 }
 
@@ -664,9 +709,11 @@ void setup() {
   drawGrid();
 
   // 连接WiFi后同步网络时间
-  xTaskCreatePinnedToCore(TaskNtpTime, "TaskNtpTime", 1024 * 2, NULL, 2, &xHandle_ntp_time, ARDUINO_RUNNING_CORE);
+  xTaskCreate(TaskNtpTime, "TaskNtpTime", 1024, NULL, 3, &xHandle_ntp_time);
   // 获取城市编码
-  xTaskCreatePinnedToCore(TaskGetCityCode, "TaskGetCityCode", 1024 * 4, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreate(TaskGetCityCode, "TaskGetCityCode", 1024, NULL, 2, &xHandle_get_city_code);
+
+  xTaskCreate(TaskSerial, "TaskSerial", 128, NULL, 3, NULL);
 }
 
 void loop() {

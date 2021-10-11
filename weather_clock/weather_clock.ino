@@ -15,12 +15,6 @@
 #include <Wire.h>
 #endif
 
-#if CONFIG_FREERTOS_UNICORE
-#define ARDUINO_RUNNING_CORE 0
-#else
-#define ARDUINO_RUNNING_CORE 1
-#endif
-
 #ifndef LED_BUILTIN
 #define LED_BUILTIN 2
 #endif
@@ -454,15 +448,15 @@ void setup() {
   } else {
     // xTaskCreatePinnedToCore(TaskBlink, "TaskBlink", 1024 * 2, NULL, 5, NULL, ARDUINO_RUNNING_CORE);
     
-    xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data, ARDUINO_RUNNING_CORE);
+    xTaskCreate(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, &xHandle_update_data);
 
-    xTaskCreatePinnedToCore(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 4, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+    xTaskCreate(TaskDrawLocalTime, "TaskDrawLocalTime", 1024 * 4, NULL, 1, NULL);
 
-    xTaskCreatePinnedToCore(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+    xTaskCreate(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 1, NULL);
     
-    xTaskCreatePinnedToCore(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 3, NULL, ARDUINO_RUNNING_CORE);
+    xTaskCreate(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 3, NULL);
 
-    xTaskCreatePinnedToCore(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL, ARDUINO_RUNNING_CORE);
+    xTaskCreate(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL);
   }
 }
 
@@ -470,8 +464,5 @@ void loop() {
   if (ssid.length() == 0) {
     server.handleClient();
     delay(50);
-  } else {
-    // 非配网状态防止空转
-    delay(5000);
   }
 }
