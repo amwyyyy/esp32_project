@@ -18,11 +18,13 @@
 #include "img/temperature.h"
 #include "img/humidity.h"
 #include "img/Gif/taikongren.h"
+#include "img/setWiFi_img.h"
 
 #define TFT_BL 22
 
 Preferences preferences; 
 String ssid, pwd, cityCode;
+#include "src/SetWiFi.h"
 
 TFT_eSPI tft     = TFT_eSPI();  
 TFT_eSprite clk  = TFT_eSprite(&tft);
@@ -36,6 +38,13 @@ const char* ntpServer1    = "ntp.aliyun.com";
 const char* ntpServer2    = "cn.ntp.org.cn";
 const char* ntpServer3    = "cn.pool.ntp.org";
 const long gmtOffset_sec  = 3600 * 8;
+
+// flag
+bool ntpConfigFlag  = false;
+bool weatherFlag    = false;
+bool setWiFiFlag   = false;
+const int CREATE    = 1;
+const int UN_CREATE = 0;
 
 // 天气相关
 String wendu = "", shidu = "";
@@ -59,19 +68,6 @@ struct {
   int Warn_Value2;
   int Warn_Flag;
 } warn;
-
-// 任务句柄
-TaskHandle_t xHandle_get_city_code;
-TaskHandle_t xHandle_ntp_time;
-TaskHandle_t xHandle_get_weather;
-
-/** 定义任务 */
-// 同步时间
-void TaskNtpTime(void *pvParameters);
-// 获取城市编码
-void TaskGetCityCode(void *pvParameters);
-// 获取城市天气
-void TaskGetCityWeather(void *pvParameters);
 
 // TFT 显示回调方法
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
@@ -351,162 +347,173 @@ void connectWiFi() {
   }
 }
 
-long dt = millis();
-char *hm = (char *) malloc(6);
-char *sec = (char *) malloc(3);
-void displayTime(long now) {
-  if (getNowTime() != 0 && (now - dt > 200)) {
-    sprintf(hm, "%02d:%02d", nowTime.hour, nowTime.minute);
-    sprintf(sec, "%02d", nowTime.second);
+void quickConnectWiFi() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("正在连接 " + ssid + "...");
+    WiFi.begin(ssid.c_str(), pwd.c_str());
 
-    clk.setColorDepth(8);
+    int count = 0;
+    while (WiFi.status() != WL_CONNECTED) {
+      count++;
+      if (count > 100) {
+        break;
+      }
+      vTaskDelay(200);
+    }
 
-    // 时分
-    clk.createSprite(140, 48);
-    clk.fillSprite(TFT_WHITE);
-    clk.setTextDatum(CC_DATUM);
-    clk.setTextColor(TFT_BLACK, TFT_WHITE);
-    clk.drawString(hm, 70, 24, 7);
-    clk.pushSprite(28, 40);
-    clk.deleteSprite();
-
-    // 秒
-    clk.createSprite(40, 28);
-    clk.fillSprite(TFT_WHITE);
-    clk.loadFont(FxLED_32);
-    clk.setTextDatum(CC_DATUM);
-    clk.setTextColor(TFT_BLACK, TFT_WHITE); 
-    clk.drawString(sec, 20, 12);
-    clk.pushSprite(170, 55);
-    clk.deleteSprite();
-    clk.unloadFont();
-
-    //星期
-    clk.loadFont(ZdyLwFont_20);
-    clk.createSprite(58, 32);
-    clk.fillSprite(TFT_WHITE);
-    clk.setTextDatum(CC_DATUM);
-    clk.setTextColor(TFT_BLACK, TFT_WHITE);
-    clk.drawString(week(), 29, 16);
-    clk.pushSprite(1, 168);
-    clk.deleteSprite();
-
-    //月日
-    clk.createSprite(98, 32);
-    clk.fillSprite(TFT_WHITE);
-    clk.setTextDatum(CC_DATUM);
-    clk.setTextColor(TFT_BLACK, TFT_WHITE);  
-    clk.drawString(monthDay(), 49, 16);
-    clk.pushSprite(61, 168);
-    clk.deleteSprite();
-    clk.unloadFont();
-
-    dt = millis();
+    Serial.print("本地IP： ");
+    Serial.println(WiFi.localIP());
   }
 }
 
-long top = millis(), bottom = millis(), wsd = millis();
-int top_index = 0, bottom_index = 0, wsd_index = 0;
-void displayScroll(long now) {
-  // 左上角滚动信息
+void closeWiFi() {
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  Serial.println();
+  Serial.println("closing wifi");
+}
+
+void displayTime(char *hm, char *sec) {
+  clk.setColorDepth(8);
+
+  // 时分
+  clk.createSprite(140, 48);
+  clk.fillSprite(TFT_WHITE);
+  clk.setTextDatum(CC_DATUM);
+  clk.setTextColor(TFT_BLACK, TFT_WHITE);
+  clk.drawString(hm, 70, 24, 7);
+  clk.pushSprite(28, 40);
+  clk.deleteSprite();
+
+  // 秒
+  clk.createSprite(40, 28);
+  clk.fillSprite(TFT_WHITE);
+  clk.loadFont(FxLED_32);
+  clk.setTextDatum(CC_DATUM);
+  clk.setTextColor(TFT_BLACK, TFT_WHITE); 
+  clk.drawString(sec, 20, 12);
+  clk.pushSprite(170, 55);
+  clk.deleteSprite();
+  clk.unloadFont();
+
+  //星期
+  clk.loadFont(ZdyLwFont_20);
+  clk.createSprite(58, 32);
+  clk.fillSprite(TFT_WHITE);
+  clk.setTextDatum(CC_DATUM);
+  clk.setTextColor(TFT_BLACK, TFT_WHITE);
+  clk.drawString(week(), 29, 16);
+  clk.pushSprite(1, 168);
+  clk.deleteSprite();
+
+  //月日
+  clk.createSprite(98, 32);
+  clk.fillSprite(TFT_WHITE);
+  clk.setTextDatum(CC_DATUM);
+  clk.setTextColor(TFT_BLACK, TFT_WHITE);  
+  clk.drawString(monthDay(), 49, 16);
+  clk.pushSprite(61, 168);
+  clk.deleteSprite();
+  clk.unloadFont();
+}
+
+void displayLeftScroll(String info) {
   if (scrollText->length() > 0) {
-    if (now - top > 3500) {
-      clk.loadFont(ZdyLwFont_20);
+    clk.loadFont(ZdyLwFont_20);
+    for(int pos = 20; pos > 0; pos--) {
       clk.createSprite(148, 24); 
       clk.fillSprite(TFT_WHITE);
       clk.setTextWrap(false);
       clk.setTextDatum(CC_DATUM);
       clk.setTextColor(TFT_BLACK, TFT_WHITE); 
-      clk.drawString(scrollText[top_index++], 74, 14);
+      clk.drawString(info, 74, pos + 14);
       clk.pushSprite(2, 4);
       clk.deleteSprite();
-      clk.unloadFont();
-
-      top = millis();
-      if (top_index > 5) {
-        top_index = 0;
-      }
     }
-  }
-
-  // 底部滚动信息
-  if (suggestScrollText->length() > 0) {
-    if (now - bottom > 5000) {
-      clk.loadFont(ZdyLwFont_20);
-      clk.createSprite(240, 40); 
-      clk.fillSprite(TFT_WHITE);
-      clk.setTextDatum(CC_DATUM);
-      clk.setTextColor(TFT_BLACK, TFT_WHITE); 
-      clk.drawString(suggestScrollText[bottom_index++], 120, 20);
-      clk.pushSprite(0, 201);
-      clk.deleteSprite();
-      clk.unloadFont();
-
-      bottom = millis();
-      if (bottom_index > 8) {
-        bottom_index = 0;
-      }
-    }
-  }
-
-  // 温度湿度
-  if (now - wsd > 6000) {
-    clk.loadFont(ZdyLwFont_20);
-    if (wsd_index == 0) {
-      TJpgDec.drawJpg(165, 171, temperature, sizeof(temperature));
-      for(int pos = 20; pos > 0; pos-=2) {
-        clk.createSprite(50, 32); 
-        clk.fillSprite(TFT_WHITE);
-        clk.setTextDatum(CC_DATUM);
-        clk.setTextColor(TFT_BLACK, TFT_WHITE); 
-        clk.drawString(wendu + "℃", 25, pos + 16);
-        clk.pushSprite(188, 168);
-        vTaskDelay(10);
-      }
-      wsd_index = 1;
-    } else {
-      TJpgDec.drawJpg(165, 171, humidity, sizeof(humidity));  //湿度图标
-      for(int pos = 20; pos > 0; pos-=2) {
-        clk.createSprite(50, 32); 
-        clk.fillSprite(TFT_WHITE);
-        clk.setTextDatum(CC_DATUM);
-        clk.setTextColor(TFT_BLACK, TFT_WHITE);   
-        clk.drawString(shidu, 25, pos + 16);
-        clk.pushSprite(188, 168);
-        vTaskDelay(10);
-      }
-      wsd_index = 0;
-    }
-    clk.deleteSprite();
     clk.unloadFont();
-    wsd = millis();
   }
 }
 
-int imgNum = 1;
-long tImg = millis();
-void displayImage(long now) {
-  int x = 80;
-  int y = 94;
+void displayBottomScroll(String info) {
+  if (suggestScrollText->length() > 0) {
+    clk.loadFont(ZdyLwFont_20);
+    clk.createSprite(240, 40); 
+    clk.fillSprite(TFT_WHITE);
+    clk.setTextDatum(CC_DATUM);
+    clk.setTextColor(TFT_BLACK, TFT_WHITE); 
+    clk.drawString(info, 120, 20);
+    clk.pushSprite(0, 201);
+    clk.deleteSprite();
+    clk.unloadFont();
+  }
+}
 
-  if (now - tImg > 100) {
-    switch(imgNum++) {
-      case 1: TJpgDec.drawJpg(x, y, i0, sizeof(i0));break;
-      case 2: TJpgDec.drawJpg(x, y, i1, sizeof(i1));break;
-      case 3: TJpgDec.drawJpg(x, y, i2, sizeof(i2));break;
-      case 4: TJpgDec.drawJpg(x, y, i3, sizeof(i3));break;
-      case 5: TJpgDec.drawJpg(x, y, i4, sizeof(i4));break;
-      case 6: TJpgDec.drawJpg(x, y, i5, sizeof(i5));break;
-      case 7: TJpgDec.drawJpg(x, y, i6, sizeof(i6));break;
-      case 8: TJpgDec.drawJpg(x, y, i7, sizeof(i7));break;
-      case 9: TJpgDec.drawJpg(x, y, i8, sizeof(i8));break;
-      case 10: TJpgDec.drawJpg(x, y, i9, sizeof(i9));imgNum = 1;break;
+void displayWsd(int wsd_index) {
+  clk.loadFont(ZdyLwFont_20);
+
+  if (wsd_index == 0) {
+    TJpgDec.drawJpg(165, 171, temperature, sizeof(temperature));
+    for(int pos = 20; pos > 0; pos--) {
+      clk.createSprite(50, 32); 
+      clk.fillSprite(TFT_WHITE);
+      clk.setTextDatum(CC_DATUM);
+      clk.setTextColor(TFT_BLACK, TFT_WHITE); 
+      clk.drawString(wendu + "℃", 25, pos + 16);
+      clk.pushSprite(188, 168);
     }
-    tImg = millis();
+  } else {
+    TJpgDec.drawJpg(165, 171, humidity, sizeof(humidity));
+    for(int pos = 20; pos > 0; pos-=2) {
+      clk.createSprite(50, 32); 
+      clk.fillSprite(TFT_WHITE);
+      clk.setTextDatum(CC_DATUM);
+      clk.setTextColor(TFT_BLACK, TFT_WHITE);   
+      clk.drawString(shidu, 25, pos + 16);
+      clk.pushSprite(188, 168);
+    }
+  }
+  clk.deleteSprite();
+  clk.unloadFont();
+}
+
+void displayImage(int imgNum, int x, int y) {  
+  switch(imgNum) {
+    case 1: TJpgDec.drawJpg(x, y, i0, sizeof(i0));break;
+    case 2: TJpgDec.drawJpg(x, y, i1, sizeof(i1));break;
+    case 3: TJpgDec.drawJpg(x, y, i2, sizeof(i2));break;
+    case 4: TJpgDec.drawJpg(x, y, i3, sizeof(i3));break;
+    case 5: TJpgDec.drawJpg(x, y, i4, sizeof(i4));break;
+    case 6: TJpgDec.drawJpg(x, y, i5, sizeof(i5));break;
+    case 7: TJpgDec.drawJpg(x, y, i6, sizeof(i6));break;
+    case 8: TJpgDec.drawJpg(x, y, i7, sizeof(i7));break;
+    case 9: TJpgDec.drawJpg(x, y, i8, sizeof(i8));break;
+    case 10: TJpgDec.drawJpg(x, y, i9, sizeof(i9));break;
+  }
+}
+
+void setWiFi() {
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(tft_output);
+  TJpgDec.drawJpg(0, 0, setWiFi_img, sizeof(setWiFi_img));
+
+  initBasic();
+  initSoftAP();
+  initWebServer();
+  initDNS();
+  while(setWiFiFlag == false) {
+    server.handleClient();
+    dnsServer.processNextRequest();
+    if(WiFi.status() == WL_CONNECTED) {
+      server.stop();
+      setWiFiFlag = true;
+    }
   }
 }
 
 void TaskNtpTime(void *pvParameters) {
+  int *create = (int *) pvParameters;
+
   for(;;) {
     int t = 0;
     do {
@@ -515,7 +522,12 @@ void TaskNtpTime(void *pvParameters) {
       t = getNowTime();
     } while (t == 0);
     Serial.println("config ntp time finish!");
+    
+    if (*create == 1) {
+      xTaskCreatePinnedToCore(TaskDisplay, "TaskDisplay", 1024 * 3, NULL, 3, NULL, 1);
+    }
 
+    ntpConfigFlag = true;
     vTaskDelete(NULL);
   }
 }
@@ -553,6 +565,7 @@ void TaskGetCityCode(void *pvParameters) {
     } else {
       Serial.print("请求城市代码错误：");
       Serial.println(String(httpCode) + " 正在重新获取...");
+      vTaskDelay(1000);
     }
 
     // 重试两次
@@ -564,7 +577,7 @@ void TaskGetCityCode(void *pvParameters) {
     vTaskDelay(50);
   }
 
-  xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, &xHandle_get_weather, 1);
+  xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, 0);
 
   vTaskDelete(NULL);
 }
@@ -620,6 +633,7 @@ void TaskGetCityWeather(void *pvParameters) {
       Serial.println("天气数据获取成功");
       httpClient.end();
 
+      weatherFlag = true;
       vTaskDelete(NULL);
     } else {
       Serial.print("请求城市天气错误：");
@@ -627,6 +641,110 @@ void TaskGetCityWeather(void *pvParameters) {
     }
     
     vTaskDelay(50);
+  }
+}
+
+void TaskDisplay(void *pvParameters) {
+  long dt = 0;
+  char *hm = (char *) malloc(6);
+  char *sec = (char *) malloc(3);
+
+  long top = 0, bottom = 0, wsd = 0;
+  int top_index = 0, bottom_index = 0, wsd_index = 0;
+
+  int imgNum = 1;
+  long tImg = 0;
+
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(tft_output);
+
+  for (;;) {
+    long now = millis();
+
+    if (now - dt > 200) {
+      if (getNowTime() != 0) {
+        sprintf(hm, "%02d:%02d", nowTime.hour, nowTime.minute);
+        sprintf(sec, "%02d", nowTime.second);
+        displayTime(hm, sec);
+      }
+      dt = millis();
+    }
+
+    // 显示动画
+    if (now - tImg > 100) {
+      displayImage(imgNum, 100, 94);
+      if (imgNum++ > 9) {
+        imgNum = 1;
+      }
+      tImg = millis();
+    }
+
+    // 左上角滚动信息
+    if (now - top > 3500) {
+      displayLeftScroll(scrollText[top_index++]);
+      top = millis();
+      if (top_index > 5) {
+        top_index = 0;
+      }
+    }
+
+    // 底部滚动信息
+    if (now - bottom > 5000) {
+      displayBottomScroll(suggestScrollText[bottom_index++]);
+      bottom = millis();
+      if (bottom_index > 8) {
+        bottom_index = 0;
+      }
+    }
+
+    // 显示温湿度
+    if (now - wsd > 6000) {
+      displayWsd(wsd_index);
+      if (wsd_index++ > 0) {
+        wsd_index = 0;
+      }
+      wsd = millis();
+    }
+
+    vTaskDelay(10);
+  }
+}
+
+void TaskUpdateData(void *pvParameters) {
+  int updateWeather = 0;
+  int updateNtp = 0;
+
+  for (;;) {
+    updateWeather++;
+    if (updateWeather == 60) {
+      quickConnectWiFi();
+      weatherFlag = false;
+      xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, 1);
+      updateWeather = 0;
+    }
+
+    updateNtp++;
+    if (updateNtp == 120) {
+      quickConnectWiFi();
+      ntpConfigFlag = false;
+      xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, (void *) &UN_CREATE, 3, NULL, 0);
+      updateNtp = 0;
+    }
+
+    vTaskDelay(60 * 1000);
+  }
+}
+
+void TaskDisconnectWiFi(void *pvParameters) {
+  for (;;) {
+    if (weatherFlag && ntpConfigFlag) {
+      if (WiFi.status() == WL_CONNECTED) {
+        closeWiFi();
+      }
+    }
+
+    vTaskDelay(2 * 60 * 1000);
   }
 }
 
@@ -645,17 +763,16 @@ void setup() {
   tft.fillScreen(TFT_BLACK);
 
   //首次使用自动进入配网模式, 读取 NVS 存储空间内的 ssid、password 和 citycode
-  // preferences.begin("wifi", false);
-  // ssid =  preferences.getString("ssid", "none"); 
-  // pwd =  preferences.getString("password", "none");
+  preferences.begin("wifi", false);
+  ssid =  preferences.getString("ssid", "none"); 
+  pwd =  preferences.getString("password", "none");
   // cityCode = preferences.getString("citycode", "none");
-  // preferences.end();
   cityCode = "101280601";
-  ssid = "xiongda";
-  pwd = "15999554794";
+  preferences.end();
 
   if(ssid == "none") {
-    // TODO 配网
+    // 配网
+    setWiFi();
   }
 
   // 连接WiFi
@@ -665,15 +782,15 @@ void setup() {
   drawGrid();
 
   // 连接WiFi后同步网络时间
-  xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, NULL, 3, &xHandle_ntp_time, 0);
+  xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, (void *) &CREATE, 3, NULL, 0);
   // 获取城市编码
-  xTaskCreatePinnedToCore(TaskGetCityCode, "GetCityCode", 1024 * 4, NULL, 2, &xHandle_get_city_code, 1);
+  xTaskCreatePinnedToCore(TaskGetCityCode, "GetCityCode", 1024 * 4, NULL, 2, NULL, 0);
+  // 定时更新数据
+  xTaskCreatePinnedToCore(TaskUpdateData, "UpdateData", 1024 * 2, NULL, 1, NULL, 0);
+  // 定时端口闲置 WiFI
+  xTaskCreatePinnedToCore(TaskDisconnectWiFi, "DisconnectWiFi", 1024 * 2, NULL, 1, NULL, 0);
 }
 
 void loop() {
-  int now = millis();
-  displayTime(now);
-  displayScroll(now);
-  displayImage(now);
-  delay(10);
+
 }

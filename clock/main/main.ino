@@ -54,7 +54,7 @@ byte omm = 99;
 boolean initial = 1;
 byte xcolon = 0;
 unsigned int colour = 0;
-byte Button = 4; //按键引脚 
+byte Button = 14; //按键引脚 
 
 uint16_t bgColor = TFT_WHITE;
 

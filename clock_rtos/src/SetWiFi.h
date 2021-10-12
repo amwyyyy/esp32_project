@@ -180,7 +180,7 @@ void initDNS(void){//初始化DNS服务器
 void connectNewWifi(void){
   WiFi.mode(WIFI_STA);//切换为STA模式
  // WiFi.setAutoConnect(true);//设置自动连接
-  WiFi.begin(PrefSSID.c_str(), PrefPassword.c_str());//连接上一次连接成功的wifi
+  WiFi.begin(ssid.c_str(), pwd.c_str());//连接上一次连接成功的wifi
   Serial.println("");
   Serial.print("Connect to wifi");
   int count = 0;

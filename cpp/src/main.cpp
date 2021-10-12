@@ -17,5 +17,16 @@ int main() {
 
     test();
     test();
+
+    int bb = 1;
+    for (int i = 0; i < 200; i++)
+    {
+        printf("===%d\n", bb);
+        if (bb++ > 9) {
+            bb = 1;
+        }
+    }
+    
+
     return 0;
 }
