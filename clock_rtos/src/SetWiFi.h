@@ -141,15 +141,8 @@ void handleRootPost() {//Post回调函数
 
   server.send(200, "text/html", "<meta charset='UTF-8'><h1>保存成功，ESP32桌面小电视重启中...</h1>");//返回保存成功页面
   delay(2000);
-  //连接wifi
-  //connectNewWifi();
 
   ESP.restart(); //重启ESP32
-}
-
-void initBasic(void){//初始化基础
-  //Serial.begin(115200);
-  //WiFi.hostname("Smart-ESP32");//设置ESP32设备名
 }
 
 void initSoftAP(void){//初始化AP模式
@@ -175,31 +168,4 @@ void initDNS(void){//初始化DNS服务器
     Serial.println("start dnsserver success.");
   }
   else Serial.println("start dnsserver failed.");
-}
-
-void connectNewWifi(void){
-  WiFi.mode(WIFI_STA);//切换为STA模式
- // WiFi.setAutoConnect(true);//设置自动连接
-  WiFi.begin(ssid.c_str(), pwd.c_str());//连接上一次连接成功的wifi
-  Serial.println("");
-  Serial.print("Connect to wifi");
-  int count = 0;
-   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    count++;
-    if(count > 20){// 如果10秒内没有连上，就开启Web配网 可适当调整这个时间
-      initSoftAP();
-      initWebServer();
-      initDNS();
-      break;// 跳出 防止无限初始化
-    }
-    Serial.print(".");
-  }
-  Serial.println("");
-  if(WiFi.status() == WL_CONNECTED){
-    Serial.println("WIFI Connected!");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-    server.stop();
-  }
 }

@@ -20,11 +20,11 @@
 #include "img/Gif/taikongren.h"
 #include "img/setWiFi_img.h"
 
-#define TFT_BL 22
-
-Preferences preferences; 
+Preferences preferences;
 String ssid, pwd, cityCode;
 #include "src/SetWiFi.h"
+
+#define TFT_BL 22
 
 TFT_eSPI tft     = TFT_eSPI();  
 TFT_eSprite clk  = TFT_eSprite(&tft);
@@ -497,7 +497,6 @@ void setWiFi() {
   TJpgDec.setCallback(tft_output);
   TJpgDec.drawJpg(0, 0, setWiFi_img, sizeof(setWiFi_img));
 
-  initBasic();
   initSoftAP();
   initWebServer();
   initDNS();
@@ -748,19 +747,28 @@ void TaskDisconnectWiFi(void *pvParameters) {
   }
 }
 
+void TaskState(void *pvParameters) {
+  static char InfoBuffer[512] = {0};
+  for (;;) {
+    vTaskList((char *) &InfoBuffer);
+    Serial.printf("任务名     任务状态   优先级   剩余栈  序号\r\n");
+    Serial.printf("\r\n%s\r\n"), InfoBuffer;
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
   // 初始化显示屏
   tft.init();
   tft.setRotation(3);
+  tft.fillScreen(TFT_BLACK);
 
   // 设置显示屏背光
   ledcSetup(0, 5000, 8);
   ledcAttachPin(TFT_BL, 0);
   ledcWrite(0, 60);
-
-  tft.fillScreen(TFT_BLACK);
 
   //首次使用自动进入配网模式, 读取 NVS 存储空间内的 ssid、password 和 citycode
   preferences.begin("wifi", false);
@@ -789,8 +797,23 @@ void setup() {
   xTaskCreatePinnedToCore(TaskUpdateData, "UpdateData", 1024 * 2, NULL, 1, NULL, 0);
   // 定时端口闲置 WiFI
   xTaskCreatePinnedToCore(TaskDisconnectWiFi, "DisconnectWiFi", 1024 * 2, NULL, 1, NULL, 0);
+  
+  xTaskCreatePinnedToCore(TaskState, "TaskState", 1024 * 4, NULL, 1, NULL, 0);
 }
 
 void loop() {
-
+  // Serial.printf("总堆大小: %u Byte\n", ESP.getHeapSize());
+  // Serial.printf("可用堆大小: %u Byte\n", ESP.getFreeHeap());
+  // Serial.printf("启动以来最少可用堆大小: %u Byte\n", ESP.getMinFreeHeap());
+  // Serial.printf("可一次性分配的最大堆大小: %u Byte\n", ESP.getMaxAllocHeap());
+  // Serial.println();
+  // Serial.printf("芯片版本号: %u \n", ESP.getChipRevision());
+  // Serial.printf("芯片时钟频率: %u \n", ESP.getCpuFreqMHz());
+  // Serial.println();
+  // Serial.printf("Flash大小: %u \n", ESP.getFlashChipSize());
+  // Serial.printf("Flash运行速度: %u \n", ESP.getFlashChipSpeed());
+  // Serial.printf("Flash工作模式: %u \n", ESP.getFlashChipMode());
+  // Serial.println();
+  // Serial.printf("固件大小: %u \n", ESP.getSketchSize());
+  // delay(5000);
 }
