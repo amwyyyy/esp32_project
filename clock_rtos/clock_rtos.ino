@@ -52,6 +52,10 @@ String wendu = "", shidu = "";
 String topScrollText[6];    // 头部滚动显示
 String bottomScrollText[8]; // 底部滚动显示
 
+// 配置
+const int updateNtpPeriod = 120;
+const int updateWeatherPeriod = 60;
+
 struct {
   int year;
   int month;
@@ -546,7 +550,7 @@ void TaskNtpTime(void *pvParameters) {
     Serial.println("config ntp time finish!");
     
     if (*create == 1) {
-      xTaskCreatePinnedToCore(TaskDisplay, "TaskDisplay", 1024 * 2, NULL, 3, NULL, 1);
+      xTaskCreatePinnedToCore(TaskDisplay, "TaskDisplay", 1024 * 2, NULL, 3, NULL, 0);
     }
 
     ntpConfigFlag = true;
@@ -659,6 +663,7 @@ void TaskGetCityWeather(void *pvParameters) {
     } else {
       Serial.print("请求城市天气错误：");
       Serial.println(String(httpCode) + " 正在重新获取...");
+      vTaskDelay(500);
     }
     
     vTaskDelay(50);
@@ -751,7 +756,7 @@ void TaskUpdateData(void *pvParameters) {
 
   for (;;) {
     updateWeather++;
-    if (updateWeather == 60) {
+    if (updateWeather == updateWeatherPeriod) {
       quickConnectWiFi();
       weatherFlag = false;
       xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, 0);
@@ -759,7 +764,7 @@ void TaskUpdateData(void *pvParameters) {
     }
 
     updateNtp++;
-    if (updateNtp == 120) {
+    if (updateNtp == updateNtpPeriod) {
       quickConnectWiFi();
       ntpConfigFlag = false;
       xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, (void *) &UN_CREATE, 3, NULL, 0);
@@ -778,7 +783,7 @@ void TaskDisconnectWiFi(void *pvParameters) {
       }
     }
     
-    vTaskDelay(2 * 60 * 1000);
+    vTaskDelay(5 * 60 * 1000);
   }
 }
 
