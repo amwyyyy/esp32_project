@@ -26,7 +26,7 @@ String ssid, pwd, cityCode;
 
 #define TFT_BL 22
 
-TFT_eSPI tft     = TFT_eSPI();  
+TFT_eSPI tft     = TFT_eSPI();
 TFT_eSprite clk  = TFT_eSprite(&tft);
 
 // WiFi 连接计数
@@ -42,14 +42,15 @@ const long gmtOffset_sec  = 3600 * 8;
 // flag
 bool ntpConfigFlag  = false;
 bool weatherFlag    = false;
-bool setWiFiFlag   = false;
+bool setWiFiFlag    = false;
 const int CREATE    = 1;
 const int UN_CREATE = 0;
+int warnFlag        = 0;
 
 // 天气相关
 String wendu = "", shidu = "";
-String scrollText[6]; // 滚动显示天气概况
-String suggestScrollText[9]; // 滚动显示天气建议
+String topScrollText[6];    // 头部滚动显示
+String bottomScrollText[8]; // 底部滚动显示
 
 struct {
   int year;
@@ -60,14 +61,6 @@ struct {
   int minute;
   int second;
 } nowTime;
-
-struct {
-  int Warn_Number1;
-  int Warn_Number2;
-  int Warn_Value1;
-  int Warn_Value2;
-  int Warn_Flag;
-} warn;
 
 // TFT 显示回调方法
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
@@ -254,27 +247,52 @@ void drawWeatherIcon(JsonObject dz) {
 
 void weatherSuggest(JsonObject dataSuggestJson) {
   // 路况
-  suggestScrollText[0] = dataSuggestJson["lk_name"].as<String>() + " " + dataSuggestJson["lk_hint"].as<String>();
-  // 晨练
-  suggestScrollText[1] = dataSuggestJson["cl_name"].as<String>() + " " + dataSuggestJson["cl_hint"].as<String>();
+  bottomScrollText[0] = dataSuggestJson["lk_name"].as<String>() + " " + dataSuggestJson["lk_hint"].as<String>();
   // 紫外线
-  suggestScrollText[2] = dataSuggestJson["uv_name"].as<String>() + " " + dataSuggestJson["uv_hint"].as<String>();
+  bottomScrollText[1] = dataSuggestJson["uv_name"].as<String>() + " " + dataSuggestJson["uv_hint"].as<String>();
   // 穿衣
-  suggestScrollText[3] = dataSuggestJson["ct_name"].as<String>() + " " + dataSuggestJson["ct_hint"].as<String>();
+  bottomScrollText[2] = dataSuggestJson["ct_name"].as<String>() + " " + dataSuggestJson["ct_hint"].as<String>();
   // 感冒
-  suggestScrollText[4] = dataSuggestJson["gm_name"].as<String>() + " " + dataSuggestJson["gm_hint"].as<String>();
+  bottomScrollText[3] = dataSuggestJson["gm_name"].as<String>() + " " + dataSuggestJson["gm_hint"].as<String>();
   // 雨伞
-  suggestScrollText[5] = dataSuggestJson["ys_name"].as<String>() + " " + dataSuggestJson["ys_hint"].as<String>();
+  bottomScrollText[4] = dataSuggestJson["ys_name"].as<String>() + " " + dataSuggestJson["ys_hint"].as<String>();
   // 干燥
-  suggestScrollText[6] = dataSuggestJson["gz_name"].as<String>() + " " + dataSuggestJson["gz_hint"].as<String>();
+  bottomScrollText[5] = dataSuggestJson["gz_name"].as<String>() + " " + dataSuggestJson["gz_hint"].as<String>();
   // 空调
-  suggestScrollText[7] = dataSuggestJson["ac_name"].as<String>() + " " + dataSuggestJson["ac_hint"].as<String>();
+  bottomScrollText[6] = dataSuggestJson["ac_name"].as<String>() + " " + dataSuggestJson["ac_hint"].as<String>();
   // 舒适度
-  suggestScrollText[8] = dataSuggestJson["co_name"].as<String>() + " " + dataSuggestJson["co_hint"].as<String>();
+  bottomScrollText[7] = dataSuggestJson["co_name"].as<String>() + " " + dataSuggestJson["co_hint"].as<String>();
+}
+
+void weatherWarn(JsonObject dataWarnJson) {
+  int warnNumber = dataWarnJson["w4"].as<int>();
+  int warnValue = dataWarnJson["w6"].as<int>();
+
+  uint16_t weatherWarnBgColor;
+  switch (warnValue) {
+    //填充颜色
+    case 1:weatherWarnBgColor = tft.color565(0,128,255);break; //蓝色
+    case 2:weatherWarnBgColor = tft.color565(255,204,51);break; //黄色
+    case 3:weatherWarnBgColor = tft.color565(255,153,0);break; //橙色
+    case 4:weatherWarnBgColor = tft.color565(255,0,0);break; //红色
+  }
+
+  if (dataWarnJson["w5"].as<String>() != "null") {
+    clk.loadFont(ZdyLwFont_20);
+    clk.createSprite(90, 24); 
+    clk.fillSprite(TFT_WHITE);
+    clk.fillRoundRect(0, 0, 90, 24, 5, weatherWarnBgColor);
+    clk.setTextDatum(CC_DATUM);
+    clk.setTextColor(TFT_WHITE); 
+    clk.drawString(dataWarnJson["w5"].as<String>(), 45, 14);
+    clk.pushSprite(145, 140);
+    clk.deleteSprite();
+    clk.unloadFont();
+  }
 }
 
 // 天气信息写到屏幕上
-void drawWeaterData(String *cityDZ, String *dataSK, String *dataFC, String *dataSuggest, String *dataWarn1) {
+void drawWeaterData(String *cityDZ, String *dataSK, String *dataFC, String *dataSuggest, String *dataWarn) {
   // 解析 json 字符串
   DynamicJsonDocument doc(8192);
   deserializeJson(doc, *dataSK);
@@ -291,25 +309,30 @@ void drawWeaterData(String *cityDZ, String *dataSK, String *dataFC, String *data
   drawPM25(sk);
 
   //左上角滚动字幕
-  scrollText[0] = "实时天气 " + sk["weather"].as<String>();
-  scrollText[1] = "风向 " + sk["WD"].as<String>() + sk["WS"].as<String>();
-  scrollText[2] = "PM2.5 " + sk["aqi_pm25"].as<String>();
+  topScrollText[0] = "实时天气 " + sk["weather"].as<String>();
+  topScrollText[1] = "风向 " + sk["WD"].as<String>() + sk["WS"].as<String>();
+  topScrollText[2] = "PM2.5 " + sk["aqi_pm25"].as<String>();
 
   deserializeJson(doc, *cityDZ);
   JsonObject dz = doc.as<JsonObject>();
-  scrollText[3] = "今日 " + dz["weather"].as<String>();
+  topScrollText[3] = "今日 " + dz["weather"].as<String>();
   //  天气图标
   drawWeatherIcon(dz);
 
   deserializeJson(doc, *dataFC);
   JsonObject fc = doc.as<JsonObject>();
-  scrollText[4] = "最低温度 " + fc["fd"].as<String>() + "℃";
-  scrollText[5] = "最高温度 " + fc["fc"].as<String>() + "℃";
+  topScrollText[4] = "最低温度 " + fc["fd"].as<String>() + "℃";
+  topScrollText[5] = "最高温度 " + fc["fc"].as<String>() + "℃";
 
   // 天气建议
   deserializeJson(doc, *dataSuggest);
   JsonObject dataSuggestJson = doc.as<JsonObject>();
   weatherSuggest(dataSuggestJson);
+
+  // 气象预警
+  deserializeJson(doc, *dataWarn);
+  JsonObject dataWarnJson = doc.as<JsonObject>();
+  weatherWarn(dataWarnJson);
 }
 
 // 星期
@@ -417,8 +440,8 @@ void displayTime(char *hm, char *sec) {
   clk.unloadFont();
 }
 
-void displayLeftScroll(String info) {
-  if (scrollText->length() > 0) {
+void displayTopScroll(String info) {
+  if (topScrollText->length() > 0) {
     clk.loadFont(ZdyLwFont_20);
     for(int pos = 20; pos > 0; pos--) {
       clk.createSprite(148, 24); 
@@ -435,7 +458,7 @@ void displayLeftScroll(String info) {
 }
 
 void displayBottomScroll(String info) {
-  if (suggestScrollText->length() > 0) {
+  if (bottomScrollText->length() > 0) {
     clk.loadFont(ZdyLwFont_20);
     clk.createSprite(240, 40); 
     clk.fillSprite(TFT_WHITE);
@@ -523,7 +546,7 @@ void TaskNtpTime(void *pvParameters) {
     Serial.println("config ntp time finish!");
     
     if (*create == 1) {
-      xTaskCreatePinnedToCore(TaskDisplay, "TaskDisplay", 1024 * 3, NULL, 3, NULL, 1);
+      xTaskCreatePinnedToCore(TaskDisplay, "TaskDisplay", 1024 * 2, NULL, 3, NULL, 1);
     }
 
     ntpConfigFlag = true;
@@ -577,7 +600,6 @@ void TaskGetCityCode(void *pvParameters) {
   }
 
   xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, 0);
-
   vTaskDelete(NULL);
 }
 
@@ -609,11 +631,11 @@ void TaskGetCityWeather(void *pvParameters) {
       // 气象预警不同时间会发布不同的预警信息，只会显示最新的一个
       indexStart = str.indexOf("alarmDZ ={\"w\":[");
       indexEnd = str.indexOf("]};var dataSK");
-      String jsonDataWarn1 = str.substring(indexStart + 15, indexEnd);
-      if(jsonDataWarn1.length() >= 40) {
-        warn.Warn_Flag = 1;
+      String jsonDataWarn = str.substring(indexStart + 15, indexEnd);
+      if(jsonDataWarn.length() >= 40) {
+        warnFlag = 1;
       } else {
-        warn.Warn_Flag = 0;
+        warnFlag = 0;
       }
 
       indexStart = str.indexOf("dataSK =");
@@ -628,7 +650,7 @@ void TaskGetCityWeather(void *pvParameters) {
       indexEnd = str.indexOf(",\"cn\":\"长沙\"};var fc =");
       String jsonSuggest = str.substring(indexStart + 19, indexEnd);
       
-      drawWeaterData(&jsonCityDZ, &jsonDataSK, &jsonFC, &jsonSuggest, &jsonDataWarn1);
+      drawWeaterData(&jsonCityDZ, &jsonDataSK, &jsonFC, &jsonSuggest, &jsonDataWarn);
       Serial.println("天气数据获取成功");
       httpClient.end();
 
@@ -653,6 +675,7 @@ void TaskDisplay(void *pvParameters) {
 
   int imgNum = 1;
   long tImg = 0;
+  int x = 100;
 
   TJpgDec.setJpgScale(1);
   TJpgDec.setSwapBytes(true);
@@ -672,7 +695,11 @@ void TaskDisplay(void *pvParameters) {
 
     // 显示动画
     if (now - tImg > 100) {
-      displayImage(imgNum, 100, 94);
+      if (warnFlag == 1) {
+        // 有天气预警时靠左
+        x = 60;
+      }
+      displayImage(imgNum, x, 94);
       if (imgNum++ > 9) {
         imgNum = 1;
       }
@@ -681,7 +708,11 @@ void TaskDisplay(void *pvParameters) {
 
     // 左上角滚动信息
     if (now - top > 3500) {
-      displayLeftScroll(scrollText[top_index++]);
+      String info = topScrollText[top_index++];
+      if (info.length() > 22) {
+        info = topScrollText[top_index++];
+      }
+      displayTopScroll(info);
       top = millis();
       if (top_index > 5) {
         top_index = 0;
@@ -690,9 +721,13 @@ void TaskDisplay(void *pvParameters) {
 
     // 底部滚动信息
     if (now - bottom > 5000) {
-      displayBottomScroll(suggestScrollText[bottom_index++]);
+      String info = bottomScrollText[bottom_index++];
+      if (info.length() > 31) {
+        info = bottomScrollText[bottom_index++];
+      }
+      displayBottomScroll(info);
       bottom = millis();
-      if (bottom_index > 8) {
+      if (bottom_index > 7) {
         bottom_index = 0;
       }
     }
@@ -719,7 +754,7 @@ void TaskUpdateData(void *pvParameters) {
     if (updateWeather == 60) {
       quickConnectWiFi();
       weatherFlag = false;
-      xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, 1);
+      xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, 0);
       updateWeather = 0;
     }
 
@@ -730,7 +765,7 @@ void TaskUpdateData(void *pvParameters) {
       xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, (void *) &UN_CREATE, 3, NULL, 0);
       updateNtp = 0;
     }
-
+    
     vTaskDelay(60 * 1000);
   }
 }
@@ -742,18 +777,26 @@ void TaskDisconnectWiFi(void *pvParameters) {
         closeWiFi();
       }
     }
-
+    
     vTaskDelay(2 * 60 * 1000);
   }
 }
 
-void TaskState(void *pvParameters) {
-  static char InfoBuffer[512] = {0};
+void TaskTftBrightness(void *pvParameters) {
   for (;;) {
-    vTaskList((char *) &InfoBuffer);
-    Serial.printf("任务名     任务状态   优先级   剩余栈  序号\r\n");
-    Serial.printf("\r\n%s\r\n"), InfoBuffer;
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
+    if (ntpConfigFlag) {
+      if (nowTime.hour >= 0 && nowTime.hour <= 6) {
+        ledcWrite(0, 20);
+      } else if (nowTime.hour > 6 && nowTime.hour <= 17) {
+        ledcWrite(0, 100);
+      } else if (nowTime.hour > 17 && nowTime.hour <= 22) {
+        ledcWrite(0, 50);
+      } else if (nowTime.hour > 22 && nowTime.hour <= 23) {
+        ledcWrite(0, 30);
+      }
+    }
+
+    vTaskDelay(5 * 60 * 1000);
   }
 }
 
@@ -768,7 +811,7 @@ void setup() {
   // 设置显示屏背光
   ledcSetup(0, 5000, 8);
   ledcAttachPin(TFT_BL, 0);
-  ledcWrite(0, 60);
+  ledcWrite(0, 100);
 
   //首次使用自动进入配网模式, 读取 NVS 存储空间内的 ssid、password 和 citycode
   preferences.begin("wifi", false);
@@ -790,15 +833,15 @@ void setup() {
   drawGrid();
 
   // 连接WiFi后同步网络时间
-  xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, (void *) &CREATE, 3, NULL, 0);
+  xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 1.5, (void *) &CREATE, 3, NULL, 0);
   // 获取城市编码
-  xTaskCreatePinnedToCore(TaskGetCityCode, "GetCityCode", 1024 * 4, NULL, 2, NULL, 0);
+  xTaskCreatePinnedToCore(TaskGetCityCode, "GetCityCode", 1024 * 2, NULL, 2, NULL, 0);
   // 定时更新数据
   xTaskCreatePinnedToCore(TaskUpdateData, "UpdateData", 1024 * 2, NULL, 1, NULL, 0);
   // 定时端口闲置 WiFI
   xTaskCreatePinnedToCore(TaskDisconnectWiFi, "DisconnectWiFi", 1024 * 2, NULL, 1, NULL, 0);
-  
-  xTaskCreatePinnedToCore(TaskState, "TaskState", 1024 * 4, NULL, 1, NULL, 0);
+  // 按时间调整屏幕亮度
+  xTaskCreatePinnedToCore(TaskTftBrightness, "TftBrightness", 1024, NULL, 1, NULL, 1);
 }
 
 void loop() {
@@ -806,14 +849,5 @@ void loop() {
   // Serial.printf("可用堆大小: %u Byte\n", ESP.getFreeHeap());
   // Serial.printf("启动以来最少可用堆大小: %u Byte\n", ESP.getMinFreeHeap());
   // Serial.printf("可一次性分配的最大堆大小: %u Byte\n", ESP.getMaxAllocHeap());
-  // Serial.println();
-  // Serial.printf("芯片版本号: %u \n", ESP.getChipRevision());
-  // Serial.printf("芯片时钟频率: %u \n", ESP.getCpuFreqMHz());
-  // Serial.println();
-  // Serial.printf("Flash大小: %u \n", ESP.getFlashChipSize());
-  // Serial.printf("Flash运行速度: %u \n", ESP.getFlashChipSpeed());
-  // Serial.printf("Flash工作模式: %u \n", ESP.getFlashChipMode());
-  // Serial.println();
-  // Serial.printf("固件大小: %u \n", ESP.getSketchSize());
   // delay(5000);
 }
