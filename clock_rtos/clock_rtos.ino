@@ -29,6 +29,8 @@ String ssid, pwd, cityCode;
 TFT_eSPI tft     = TFT_eSPI();
 TFT_eSprite clk  = TFT_eSprite(&tft);
 
+SemaphoreHandle_t xGuiSemaphore;
+
 // WiFi 连接计数
 int connectTimes = 0;
 byte loadNum     = 6;
@@ -671,6 +673,8 @@ void TaskGetCityWeather(void *pvParameters) {
 }
 
 void TaskDisplay(void *pvParameters) {
+  xGuiSemaphore = xSemaphoreCreateMutex();
+
   long dt = 0;
   char *hm = (char *) malloc(6);
   char *sec = (char *) malloc(3);
@@ -687,63 +691,66 @@ void TaskDisplay(void *pvParameters) {
   TJpgDec.setCallback(tft_output);
 
   for (;;) {
-    long now = millis();
+    if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
+      long now = millis();
 
-    if (now - dt > 200) {
-      if (getNowTime() != 0) {
-        sprintf(hm, "%02d:%02d", nowTime.hour, nowTime.minute);
-        sprintf(sec, "%02d", nowTime.second);
-        displayTime(hm, sec);
+      if (now - dt > 200) {
+        if (getNowTime() != 0) {
+          sprintf(hm, "%02d:%02d", nowTime.hour, nowTime.minute);
+          sprintf(sec, "%02d", nowTime.second);
+          displayTime(hm, sec);
+        }
+        dt = millis();
       }
-      dt = millis();
-    }
 
-    // 显示动画
-    if (now - tImg > 100) {
-      if (warnFlag == 1) {
-        // 有天气预警时靠左
-        x = 60;
+      // 显示动画
+      if (now - tImg > 100) {
+        if (warnFlag == 1) {
+          // 有天气预警时靠左
+          x = 60;
+        }
+        displayImage(imgNum, x, 94);
+        if (imgNum++ > 9) {
+          imgNum = 1;
+        }
+        tImg = millis();
       }
-      displayImage(imgNum, x, 94);
-      if (imgNum++ > 9) {
-        imgNum = 1;
-      }
-      tImg = millis();
-    }
 
-    // 左上角滚动信息
-    if (now - top > 3500) {
-      String info = topScrollText[top_index++];
-      if (info.length() > 22) {
-        info = topScrollText[top_index++];
+      // 左上角滚动信息
+      if (now - top > 3500) {
+        String info = topScrollText[top_index++];
+        if (info.length() > 22) {
+          info = topScrollText[top_index++];
+        }
+        displayTopScroll(info);
+        top = millis();
+        if (top_index > 5) {
+          top_index = 0;
+        }
       }
-      displayTopScroll(info);
-      top = millis();
-      if (top_index > 5) {
-        top_index = 0;
-      }
-    }
 
-    // 底部滚动信息
-    if (now - bottom > 5000) {
-      String info = bottomScrollText[bottom_index++];
-      if (info.length() > 31) {
-        info = bottomScrollText[bottom_index++];
+      // 底部滚动信息
+      if (now - bottom > 5000) {
+        String info = bottomScrollText[bottom_index++];
+        if (info.length() > 31) {
+          info = bottomScrollText[bottom_index++];
+        }
+        displayBottomScroll(info);
+        bottom = millis();
+        if (bottom_index > 7) {
+          bottom_index = 0;
+        }
       }
-      displayBottomScroll(info);
-      bottom = millis();
-      if (bottom_index > 7) {
-        bottom_index = 0;
-      }
-    }
 
-    // 显示温湿度
-    if (now - wsd > 6000) {
-      displayWsd(wsd_index);
-      if (wsd_index++ > 0) {
-        wsd_index = 0;
-      }
-      wsd = millis();
+      // 显示温湿度
+      if (now - wsd > 6000) {
+        displayWsd(wsd_index);
+        if (wsd_index++ > 0) {
+          wsd_index = 0;
+        }
+        wsd = millis();
+      } 
+      xSemaphoreGive(xGuiSemaphore);
     }
 
     vTaskDelay(10);
