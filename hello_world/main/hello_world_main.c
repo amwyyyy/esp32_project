@@ -38,9 +38,15 @@ void task_test_SSD1306i2c(void *ignore) {
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
     u8g2_ClearBuffer(&u8g2);
-    u8g2_DrawBox(&u8g2, 0, 26, 80,6);
-	u8g2_DrawFrame(&u8g2, 0,26,100,6);
-    u8g2_SendBuffer(&u8g2);
+    u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
+    u8g2_DrawStr(&u8g2, 10, 5, "Hello, world!");
+
+    for (int i = 0; i < 100; i++) {
+        u8g2_DrawBox(&u8g2, 10, 26, i, 6);
+        u8g2_DrawFrame(&u8g2, 10, 26, 100, 6);
+        u8g2_SendBuffer(&u8g2);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+    }
 
     vTaskDelete(NULL);
 }
@@ -49,7 +55,7 @@ void app_main(void)
 {
     printf("Hello world!\n");
 
-    xTaskCreatePinnedToCore(task_test_SSD1306i2c, "test_task", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(task_test_SSD1306i2c, "test_task", 1024 * 4, NULL, 2, NULL, tskNO_AFFINITY);
 
     /* Print chip information */
     esp_chip_info_t chip_info;
@@ -67,10 +73,10 @@ void app_main(void)
 
     printf("Minimum free heap size: %d bytes\n", esp_get_minimum_free_heap_size());
 
-    for (int i = 0; i < 10; i++) {
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-    }
-    printf("Restarting now.\n");
-    fflush(stdout);
-    esp_restart();
+    // for (int i = 0; i < 100; i++) {
+    //     vTaskDelay(2000 / portTICK_PERIOD_MS);
+    // }
+    // printf("Restarting now.\n");
+    // fflush(stdout);
+    // esp_restart();
 }
