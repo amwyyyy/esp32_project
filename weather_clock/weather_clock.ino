@@ -7,6 +7,7 @@
 #include "images.h"
 #include <WebServer.h>
 #include <uri/UriBraces.h>
+#include <DNSServer.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -397,20 +398,22 @@ void TaskDisplayQRCode(void *pvParameters) {
 }
 
 // 配置 WiFi 账号密码
+DNSServer dnsServer;
+const byte DNS_PORT = 53; //DNS端口号
+IPAddress apIP(192, 168, 4, 1); //esp32-AP-IP地址
+
 void configWiFi() {
   xTaskCreate(TaskDisplayQRCode, "TaskDisplayQRCode", 1024 * 4, NULL, 3, NULL);
 
-  const byte DNS_PORT = 53; //DNS端口号
-  IPAddress apIP(192, 168, 4, 1); //esp32-AP-IP地址
   const char *ssidd = "esp32-clock";
   WiFi.mode(WIFI_AP);
-  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+  // WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   WiFi.softAP(ssidd);
-  dnsServer.start(DNS_PORT, "*", apIP)
+  // dnsServer.start(DNS_PORT, "*", apIP)
   
-  IPAddress myIP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(myIP);
+  // IPAddress myIP = WiFi.softAPIP();
+  // Serial.print("AP IP address: ");
+  // Serial.println(myIP);
 
   server.on(UriBraces("/setting/{}/{}"), []() {
     String ssidA = server.pathArg(0);
