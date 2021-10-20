@@ -38,15 +38,16 @@ void task_test_SSD1306i2c(void *ignore) {
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
     u8g2_ClearBuffer(&u8g2);
-    u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
-    u8g2_DrawStr(&u8g2, 10, 5, "Hello, world!");
+    u8g2_SetFont(&u8g2, u8g2_font_lubB18_tr);
+    u8g2_DrawStr(&u8g2, 10, 40, "22:44");
+    u8g2_SendBuffer(&u8g2);
 
-    for (int i = 0; i < 100; i++) {
-        u8g2_DrawBox(&u8g2, 10, 26, i, 6);
-        u8g2_DrawFrame(&u8g2, 10, 26, 100, 6);
-        u8g2_SendBuffer(&u8g2);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-    }
+    // for (int i = 0; i < 100; i++) {
+    //     u8g2_DrawBox(&u8g2, 10, 26, i, 6);
+    //     u8g2_DrawFrame(&u8g2, 10, 26, 100, 6);
+    //     u8g2_SendBuffer(&u8g2);
+    //     vTaskDelay(50 / portTICK_PERIOD_MS);
+    // }
 
     vTaskDelete(NULL);
 }
