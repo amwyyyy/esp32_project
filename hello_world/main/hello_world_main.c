@@ -40,12 +40,13 @@ void task_test_SSD1306i2c(void *ignore) {
     u8g2_DrawStr(&u8g2, 10, 40, "22:44");
     u8g2_SendBuffer(&u8g2);
 
-    // for (int i = 0; i < 100; i++) {
-    //     u8g2_DrawBox(&u8g2, 10, 26, i, 6);
-    //     u8g2_DrawFrame(&u8g2, 10, 26, 100, 6);
-    //     u8g2_SendBuffer(&u8g2);
-    //     vTaskDelay(50 / portTICK_PERIOD_MS);
-    // }
+    for (int i = 0; i < 100; i++) {
+        u8g2_DrawBox(&u8g2, 10, 26, i, 6);
+        u8g2_DrawFrame(&u8g2, 10, 26, 100, 6);
+        u8g2_SendBuffer(&u8g2);
+        printf("current core: %d\n", xPortGetCoreID());
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 
     vTaskDelete(NULL);
 }
@@ -76,19 +77,19 @@ void app_main(void)
 
     printf("task nums: %d\n", uxTaskGetNumberOfTasks());
 
-    char InfoBuffer[512];
-    for (int i = 10; i >= 0; i--) {
-        vTaskList((char *) &InfoBuffer);
-        printf("任务名   任务状态    优先级  剩余栈  任务序号    CPU核\n");
-        printf("\n%s\n", InfoBuffer);
+    // char InfoBuffer[512];
+    // for (int i = 10; i >= 0; i--) {
+    //     vTaskList((char *) &InfoBuffer);
+    //     printf("任务名   任务状态    优先级  剩余栈  任务序号    CPU核\n");
+    //     printf("\n%s\n", InfoBuffer);
         
-        vTaskGetRunTimeStats((char *) &InfoBuffer);
-        printf("任务名       运行计数         使用率");
-        printf("\n%s\n", InfoBuffer);
+    //     vTaskGetRunTimeStats((char *) &InfoBuffer);
+    //     printf("任务名       运行计数         使用率");
+    //     printf("\n%s\n", InfoBuffer);
 
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
-    }
-    printf("Restarting now.\n");
-    fflush(stdout);
-    esp_restart();
+    //     vTaskDelay(10000 / portTICK_PERIOD_MS);
+    // }
+    // printf("Restarting now.\n");
+    // fflush(stdout);
+    // esp_restart();
 }
