@@ -12,8 +12,6 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
-// #include "ssd1306.h"
-// #include "intf/i2c/ssd1306_i2c.h"
 
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
@@ -72,12 +70,25 @@ void app_main(void)
     printf("%dMB %s flash\n", spi_flash_get_chip_size() / (1024 * 1024),
             (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded" : "external");
 
+    printf("Size of available internal heap: %d bytes\n", esp_get_free_internal_heap_size());
+
     printf("Minimum free heap size: %d bytes\n", esp_get_minimum_free_heap_size());
 
-    // for (int i = 0; i < 100; i++) {
-    //     vTaskDelay(2000 / portTICK_PERIOD_MS);
-    // }
-    // printf("Restarting now.\n");
-    // fflush(stdout);
-    // esp_restart();
+    printf("task nums: %d\n", uxTaskGetNumberOfTasks());
+
+    char InfoBuffer[512];
+    for (int i = 10; i >= 0; i--) {
+        vTaskList((char *) &InfoBuffer);
+        printf("任务名   任务状态    优先级  剩余栈  任务序号    CPU核\n");
+        printf("\n%s\n", InfoBuffer);
+        
+        vTaskGetRunTimeStats((char *) &InfoBuffer);
+        printf("任务名       运行计数         使用率");
+        printf("\n%s\n", InfoBuffer);
+
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+    }
+    printf("Restarting now.\n");
+    fflush(stdout);
+    esp_restart();
 }

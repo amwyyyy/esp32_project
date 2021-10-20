@@ -42,7 +42,6 @@ struct {
 
 int initFlag = 0;
 int updateFlag = 0;
-int viewFlag = 0;
 
 // 天气相关变量
 const char* host   = "www.weather.com.cn";
@@ -85,8 +84,6 @@ void TaskDrawLocalTime(void *pvParameters);
 void TaskUpdateWeather(void *pvParameters);
 // 获取温湿度任务
 void TaskGetTemperature(void *pvParameters);
-// 切换温度天气显示
-void TaskChangeView(void *pvParameters);
 // 显示配网二维码
 void TaskDisplayQRCode(void *pvParameters);
 
@@ -379,13 +376,6 @@ void TaskGetTemperature(void *pvParameters) {
   }
 }
 
-void TaskChangeView(void *pvParameters) {
-  for (;;) {
-    viewFlag = !viewFlag;
-    vTaskDelay(8000);  
-  }
-}
-
 void TaskDisplayQRCode(void *pvParameters) {
   for (;;) {
     u8g2.firstPage();
@@ -436,6 +426,11 @@ void configWiFi() {
   server.begin();
 
   Serial.println("Server started");
+
+  while (ssid.length() == 0) {
+    server.handleClient();
+    vTaskDelay(50);
+  }
 }
 
 void setup() {
@@ -464,14 +459,9 @@ void setup() {
     xTaskCreate(TaskUpdateWeather, "TaskUpdateWeather", 1024 * 2, NULL, 1, NULL);
     
     xTaskCreate(TaskGetTemperature, "TaskGetTemperature", 1024, NULL, 3, NULL);
-
-    xTaskCreate(TaskChangeView, "TaskChangeView", 1024, NULL, 4, NULL);
   }
 }
 
 void loop() {
-  if (ssid.length() == 0) {
-    server.handleClient();
-    delay(50);
-  }
+
 }
