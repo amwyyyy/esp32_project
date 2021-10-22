@@ -17,7 +17,7 @@
 
 static const char *TAG = "clock_idf";
 
-/* FreeRTOS event group to signal when we are connected*/
+/* FreeRTOS event group to signal when we are connected */
 static EventGroupHandle_t s_wifi_event_group;
 
 // void task_test_SSD1306i2c(void *ignore) {
@@ -51,6 +51,9 @@ void u8g2_init() {
     ESP_LOGI(TAG, "Init u8g2 end.");
 }
 
+/**
+ * WiFi 事件处理
+ */
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,int32_t event_id, void* event_data) {
     static int s_retry_num = 0;
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -72,11 +75,10 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,int32_t ev
     }
 }
 
-void app_main(void) {
-    ESP_LOGI(TAG, "\nAPP is start!!!\n");
-    u8g2_init();
-
-    ESP_ERROR_CHECK(nvs_flash_init());  // 初始化存储
+/**
+ * 初始化网络 
+ */
+void wifi_init(char *wifi_ssid, char *wifi_passwd) {
     ESP_ERROR_CHECK(esp_netif_init());  // 初始化网络接口
 
     s_wifi_event_group = xEventGroupCreate();   // 创建WIFI连接事件组
@@ -92,16 +94,46 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 	ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = "xiongda",
-            .password = "15999554794",
-        },
-    };
+    wifi_config_t wifi_config;
+    bzero(&wifi_config, sizeof(wifi_config_t));
+    memcpy(wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
+    memcpy(wifi_config.sta.password, wifi_passwd, sizeof(wifi_config.sta.password));
+
     // 设置 WiFi 运行模式为: STA
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     // 设置 WiFi 连接参数
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     // 启动 WiFi
-    ESP_ERROR_CHECK(esp_wifi_start() );
+    ESP_ERROR_CHECK(esp_wifi_start());
+}
+
+void app_main(void) {
+    ESP_LOGI(TAG, "\nAPP is start!!!\n");
+    u8g2_init();
+
+    // 初始化存储
+    ESP_ERROR_CHECK(nvs_flash_init());
+
+    // 定义NVS操作句柄
+    nvs_handle wificfg_nvs_handler;
+    char *wifi_ssid = malloc(32);
+    char *wifi_passwd = malloc(64);
+    size_t len;
+
+    // 打开NVS命名空间
+    ESP_ERROR_CHECK(nvs_open("esp32-clock", NVS_READWRITE, &wificfg_nvs_handler));
+
+    // 获取值
+    len = sizeof(wifi_ssid);
+    ESP_ERROR_CHECK(nvs_get_str(wificfg_nvs_handler, "wifi_ssid", wifi_ssid, &len));
+    len = sizeof(wifi_ssid);
+    ESP_ERROR_CHECK(nvs_get_str(wificfg_nvs_handler, "wifi_passwd", wifi_passwd, &len));
+
+    // 提交
+    ESP_ERROR_CHECK(nvs_commit(wificfg_nvs_handler));
+
+    // 关闭
+    nvs_close(wificfg_nvs_handler);
+
+    wifi_init(wifi_ssid, wifi_passwd); 
 }
