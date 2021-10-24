@@ -6,11 +6,16 @@
 #include "esp_wifi.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "esp_sntp.h"
 #include "sdkconfig.h"
 #include "u8g2_esp32_hal.h"
 
 #define PIN_SDA 21
 #define PIN_SCL 22
+
+#define BLINK_GPIO 2
+#define HIGH 1
+#define LOW  0
 
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
@@ -20,15 +25,29 @@ static const char *TAG = "clock_idf";
 /* FreeRTOS event group to signal when we are connected */
 static EventGroupHandle_t s_wifi_event_group;
 
-// void task_test_SSD1306i2c(void *ignore) {
-//     u8g2_FirstPage(&u8g2);
-//     do {
-//         u8g2_SetFont(&u8g2, u8g2_font_crox4hb_tf);
-//         u8g2_DrawStr(&u8g2, 10, 50, "22:44");
-//     } while (u8g2_NextPage(&u8g2));
+u8g2_t u8g2;
 
-//     vTaskDelete(NULL);
-// }
+char wifi_ssid[32];
+char wifi_passwd[64];
+
+bool wifi_connected = false;
+bool sntp_config    = false;
+
+struct {
+  int year;
+  int month;
+  int day;
+  int hour;
+  int minute;
+  int second;
+} now_time;
+
+// 方法定义
+void initialize_sntp(void *arg);
+void get_now_time(void);
+void task_draw_local_time(void *arg);
+void get_by_nvs();
+void light_led(void);
 
 void u8g2_init() {
     ESP_LOGI(TAG, "Init u8g2...");
@@ -37,7 +56,6 @@ void u8g2_init() {
 	u8g2_esp32_hal.scl = PIN_SCL;
 	u8g2_esp32_hal_init(u8g2_esp32_hal);
 
-    u8g2_t u8g2;
     u8g2_Setup_ssd1306_i2c_128x64_noname_f(
 		&u8g2,
 		U8G2_R0,
@@ -72,13 +90,18 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,int32_t ev
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+
+        light_led();
+        wifi_connected = true;
+        xTaskCreatePinnedToCore(initialize_sntp, "InitializeSntp", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
     }
 }
 
 /**
  * 初始化网络 
  */
-void wifi_init(char *wifi_ssid, char *wifi_passwd) {
+void wifi_init(void *arg) {
+    ESP_LOGI(TAG, "Init WiFi...");
     ESP_ERROR_CHECK(esp_netif_init());  // 初始化网络接口
 
     s_wifi_event_group = xEventGroupCreate();   // 创建WIFI连接事件组
@@ -98,6 +121,7 @@ void wifi_init(char *wifi_ssid, char *wifi_passwd) {
     bzero(&wifi_config, sizeof(wifi_config_t));
     memcpy(wifi_config.sta.ssid, wifi_ssid, sizeof(wifi_config.sta.ssid));
     memcpy(wifi_config.sta.password, wifi_passwd, sizeof(wifi_config.sta.password));
+    ESP_LOGI(TAG, "WiFi ssid: %s\tpasswd: %s", wifi_ssid, wifi_passwd);
 
     // 设置 WiFi 运行模式为: STA
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
@@ -105,19 +129,26 @@ void wifi_init(char *wifi_ssid, char *wifi_passwd) {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     // 启动 WiFi
     ESP_ERROR_CHECK(esp_wifi_start());
+    // 设置 WiFi 省电模式
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MAX_MODEM));
+
+    ESP_LOGI(TAG, "Init WiFi end.");
+
+    vTaskDelete(NULL);
 }
 
-void app_main(void) {
-    ESP_LOGI(TAG, "\nAPP is start!!!\n");
-    u8g2_init();
+/**
+ * 从 nvs 获取 wifi 账号密码
+ */
+void get_by_nvs() {
+    ESP_LOGI(TAG, "Init NVS...");
 
     // 初始化存储
     ESP_ERROR_CHECK(nvs_flash_init());
 
     // 定义NVS操作句柄
     nvs_handle wificfg_nvs_handler;
-    char *wifi_ssid = malloc(32);
-    char *wifi_passwd = malloc(64);
+
     size_t len;
 
     // 打开NVS命名空间
@@ -135,5 +166,144 @@ void app_main(void) {
     // 关闭
     nvs_close(wificfg_nvs_handler);
 
-    wifi_init(wifi_ssid, wifi_passwd); 
+    ESP_LOGI(TAG, "Close NVS.");
+}
+
+/**
+ * 初始化Sntp
+ */
+void initialize_sntp(void *arg) {
+	ESP_LOGI(TAG, "------------Initializing SNTP-----------");
+	sntp_setoperatingmode(SNTP_OPMODE_POLL);  
+	sntp_setservername(0, "ntp.aliyun.com"); 
+    sntp_setservername(1, "ntp1.aliyun.com"); 
+	sntp_init();
+
+    // 设置时区
+    setenv("TZ", "CST-8", 1);
+	tzset();
+
+    time_t now = 0;
+    struct tm timeinfo = {0};
+
+    do {
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    } while (timeinfo.tm_year < 100);
+
+    ESP_LOGI(TAG, "------------Finish SNTP-----------");
+    sntp_config = true;
+    vTaskDelete(NULL);
+}
+
+void get_now_time(void) {
+    time_t now = 0;
+    struct tm timeinfo = {0};
+
+    time(&now);
+    localtime_r(&now, &timeinfo);
+
+    now_time.year   = timeinfo.tm_year + 1900;
+    now_time.month  = timeinfo.tm_mon + 1;
+    now_time.day    = timeinfo.tm_mday;
+    now_time.hour   = timeinfo.tm_hour;
+    now_time.minute = timeinfo.tm_min;
+    now_time.second = timeinfo.tm_sec;
+
+    ESP_LOGD(TAG, "-------current time: %d-%d-%d %d:%d:%d",
+			 now_time.year, now_time.month,
+			 now_time.day, now_time.hour,
+			 now_time.minute, now_time.second);        
+}
+
+void task_draw_local_time(void *arg) {
+    // 保存格式化字符串
+    char *ld     = (char *) malloc(11);
+    char *lt     = (char *) malloc(6);
+    char *second = (char *) malloc(3);
+    
+    while (true) {
+        get_now_time();
+        u8g2_FirstPage(&u8g2);
+        do {
+            // 画网格线
+            u8g2_DrawVLine(&u8g2, 45, 0, 18);
+            u8g2_DrawVLine(&u8g2, 70, 0, 18);
+            u8g2_DrawHLine(&u8g2, 0, 18, 128);
+            u8g2_DrawHLine(&u8g2, 0, 51, 128);
+            // 显示时分
+            u8g2_SetFont(&u8g2, u8g2_font_lubB18_tr);
+            sprintf(lt, "%02d:%02d", now_time.hour, now_time.minute);
+            u8g2_DrawStr(&u8g2, 22, 45, lt);
+            // 显示秒
+            u8g2_SetFont(&u8g2, u8g2_font_8x13B_tr);
+            sprintf(second, "%02d", now_time.second);
+            u8g2_DrawStr(&u8g2, 98, 45, second);
+            // 显示年月日
+            u8g2_SetFont(&u8g2, u8g2_font_profont11_tr);
+            sprintf(ld, "%d.%02d.%02d", now_time.year, now_time.month, now_time.day);
+            u8g2_DrawStr(&u8g2, 35, 60, ld);
+
+            vTaskDelay(200 / portTICK_PERIOD_MS);
+        } while (u8g2_NextPage(&u8g2));
+    }
+}
+
+void display_process(void *arg) {
+    char current_process[] = "Connecting WiFi...";
+    int i = 1;
+    for (; i <= 100; i++) {
+        if (wifi_connected) {
+            strcpy(current_process, "Config Sntp...");
+        }
+
+        if (sntp_config) {
+            if (i < 100) {
+                for (; i <= 100; i++) {
+                    u8g2_FirstPage(&u8g2);
+                    do {
+                        u8g2_DrawBox(&u8g2, 10, 30, i, 6);
+                        u8g2_DrawFrame(&u8g2, 10, 30, 100, 6);
+                        u8g2_SetFont(&u8g2, u8g2_font_profont11_tr);
+                        u8g2_DrawStr(&u8g2, 10, 50, current_process);
+                    } while (u8g2_NextPage(&u8g2));
+                }
+            }
+            break;
+        }
+
+        u8g2_FirstPage(&u8g2);
+        do {
+            u8g2_DrawBox(&u8g2, 10, 30, i, 6);
+            u8g2_DrawFrame(&u8g2, 10, 30, 100, 6);
+            u8g2_SetFont(&u8g2, u8g2_font_profont11_tr);
+            u8g2_DrawStr(&u8g2, 10, 50, current_process);
+        } while (u8g2_NextPage(&u8g2));
+        vTaskDelay(200 / portTICK_PERIOD_MS);
+        if (i == 100) {
+            i = 0;
+        }
+    }
+
+    xTaskCreatePinnedToCore(task_draw_local_time, "DrawLocalTime", 1024 * 4, NULL, 2, NULL, 1);
+    vTaskDelete(NULL);
+}
+
+void light_led(void) {
+    gpio_reset_pin(BLINK_GPIO);
+    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(BLINK_GPIO, HIGH);    
+}
+
+void app_main(void) {
+    ESP_LOGI(TAG, "APP is start!!!");
+
+    u8g2_init();
+
+    get_by_nvs();
+
+    xTaskCreatePinnedToCore(wifi_init, "WiFiInit", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
+
+    xTaskCreatePinnedToCore(display_process, "DisplayProcess", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
 }
