@@ -30,8 +30,8 @@ u8g2_t u8g2;
 char wifi_ssid[32];
 char wifi_passwd[64];
 
-bool wifi_connected = false;
-bool sntp_config    = false;
+bool wifi_connect_status = false;
+bool sntp_config_status  = false;
 
 struct {
   int year;
@@ -43,7 +43,7 @@ struct {
 } now_time;
 
 // 方法定义
-void initialize_sntp(void *arg);
+void task_init_sntp(void *arg);
 void get_now_time(void);
 void task_draw_local_time(void *arg);
 void get_by_nvs();
@@ -72,7 +72,7 @@ void u8g2_init() {
 /**
  * WiFi 事件处理
  */
-static void wifi_event_handler(void* arg, esp_event_base_t event_base,int32_t event_id, void* event_data) {
+static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
     static int s_retry_num = 0;
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
@@ -92,15 +92,15 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base,int32_t ev
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
 
         light_led();
-        wifi_connected = true;
-        xTaskCreatePinnedToCore(initialize_sntp, "InitializeSntp", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
+        wifi_connect_status = true;
+        xTaskCreatePinnedToCore(task_init_sntp, "InitializeSntp", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
     }
 }
 
 /**
  * 初始化网络 
  */
-void wifi_init(void *arg) {
+void task_wifi_init(void *arg) {
     ESP_LOGI(TAG, "Init WiFi...");
     ESP_ERROR_CHECK(esp_netif_init());  // 初始化网络接口
 
@@ -172,7 +172,7 @@ void get_by_nvs() {
 /**
  * 初始化Sntp
  */
-void initialize_sntp(void *arg) {
+void task_init_sntp(void *arg) {
 	ESP_LOGI(TAG, "------------Initializing SNTP-----------");
 	sntp_setoperatingmode(SNTP_OPMODE_POLL);  
 	sntp_setservername(0, "ntp.aliyun.com"); 
@@ -193,7 +193,7 @@ void initialize_sntp(void *arg) {
     } while (timeinfo.tm_year < 100);
 
     ESP_LOGI(TAG, "------------Finish SNTP-----------");
-    sntp_config = true;
+    sntp_config_status = true;
     vTaskDelete(NULL);
 }
 
@@ -250,15 +250,15 @@ void task_draw_local_time(void *arg) {
     }
 }
 
-void display_process(void *arg) {
+void task_display_process(void *arg) {
     char current_process[] = "Connecting WiFi...";
     int i = 1;
     for (; i <= 100; i++) {
-        if (wifi_connected) {
+        if (wifi_connect_status) {
             strcpy(current_process, "Config Sntp...");
         }
 
-        if (sntp_config) {
+        if (sntp_config_status) {
             if (i < 100) {
                 for (; i <= 100; i++) {
                     u8g2_FirstPage(&u8g2);
@@ -303,7 +303,7 @@ void app_main(void) {
 
     get_by_nvs();
 
-    xTaskCreatePinnedToCore(wifi_init, "WiFiInit", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(task_wifi_init, "WiFiInit", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
 
-    xTaskCreatePinnedToCore(display_process, "DisplayProcess", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(task_display_process, "DisplayProcess", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
 }
