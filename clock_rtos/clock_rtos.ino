@@ -168,7 +168,7 @@ void drawPM25(JsonObject sk) {
   } else if(pm25V >= 201 & pm25V <= 300){
     pm25BgColor = tft.color565(136, 11, 32);
     aqiTxt = "重度";
-  } else if(pm25V >= 151 & pm25V <= 200){
+  } else if(pm25V >= 161 & pm25V <= 200){
     pm25BgColor = tft.color565(186, 55, 121);
     aqiTxt = "中度";
   } else if(pm25V >= 101 & pm25V <= 160){
@@ -271,7 +271,6 @@ void weatherSuggest(JsonObject dataSuggestJson) {
 }
 
 void weatherWarn(JsonObject dataWarnJson) {
-  int warnNumber = dataWarnJson["w4"].as<int>();
   int warnValue = dataWarnJson["w6"].as<int>();
 
   uint16_t weatherWarnBgColor;
