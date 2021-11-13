@@ -7,6 +7,9 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_sntp.h"
+#include "esp_http_client.h"
+#include "esp_tls.h"
+#include "cJSON.h"
 #include "sdkconfig.h"
 #include "u8g2_esp32_hal.h"
 
@@ -42,12 +45,21 @@ struct {
   int second;
 } now_time;
 
+struct {
+    char* weather;
+    char* high;
+    char* low;
+} wea;
+
+char cityCode[] = "101280601";
+
 // 方法定义
 void task_init_sntp(void *arg);
 void get_now_time(void);
 void task_draw_local_time(void *arg);
 void get_by_nvs();
 void light_led(void);
+void init_weather(void *arg);
 
 void u8g2_init() {
     ESP_LOGI(TAG, "Init u8g2...");
@@ -91,9 +103,14 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
         s_retry_num = 0;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
 
+        // 亮灯
         light_led();
-        wifi_connect_status = true;
-        xTaskCreatePinnedToCore(task_init_sntp, "InitializeSntp", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
+        // 设置状态
+        wifi_connected = true;
+        // 启动同步网络时间任务
+        xTaskCreatePinnedToCore(initialize_sntp, "InitializeSntp", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
+        // 获取天气信息
+        xTaskCreatePinnedToCore(init_weather, "InitWeather", 1024 * 8, NULL, 1, NULL, tskNO_AFFINITY);
     }
 }
 
@@ -222,14 +239,14 @@ void task_draw_local_time(void *arg) {
     char *ld     = (char *) malloc(11);
     char *lt     = (char *) malloc(6);
     char *second = (char *) malloc(3);
+    char *temp   = (char *) malloc(13);
     
     while (true) {
         get_now_time();
         u8g2_FirstPage(&u8g2);
         do {
             // 画网格线
-            u8g2_DrawVLine(&u8g2, 45, 0, 18);
-            u8g2_DrawVLine(&u8g2, 70, 0, 18);
+            u8g2_DrawVLine(&u8g2, 65, 0, 18);
             u8g2_DrawHLine(&u8g2, 0, 18, 128);
             u8g2_DrawHLine(&u8g2, 0, 51, 128);
             // 显示时分
@@ -244,6 +261,14 @@ void task_draw_local_time(void *arg) {
             u8g2_SetFont(&u8g2, u8g2_font_profont11_tr);
             sprintf(ld, "%d.%02d.%02d", now_time.year, now_time.month, now_time.day);
             u8g2_DrawStr(&u8g2, 35, 60, ld);
+
+            // 显示天气
+            u8g2_SetFont(&u8g2, u8g2_font_wqy13_t_chinese1);
+            u8g2_DrawUTF8(&u8g2, 5, 13, wea.weather);
+            // 显示温度
+            sprintf(temp, "%s~%s°C", wea.low, wea.high);
+            u8g2_SetFont(&u8g2, u8g2_font_profont15_tf);
+            u8g2_DrawUTF8(&u8g2, 70, 13, temp);
 
             vTaskDelay(200 / portTICK_PERIOD_MS);
         } while (u8g2_NextPage(&u8g2));
@@ -296,6 +321,145 @@ void light_led(void) {
     gpio_set_level(BLINK_GPIO, HIGH);    
 }
 
+esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
+    static char *output_buffer;  // Buffer to store response of http request from event handler
+    static int output_len;       // Stores number of bytes read
+    switch(evt->event_id) {
+        case HTTP_EVENT_ERROR:
+            ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
+            break;
+        case HTTP_EVENT_ON_CONNECTED:
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
+            break;
+        case HTTP_EVENT_HEADER_SENT:
+            ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
+            break;
+        case HTTP_EVENT_ON_HEADER:
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+            break;
+        case HTTP_EVENT_ON_DATA:
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+            /*
+             *  Check for chunked encoding is added as the URL for chunked encoding used in this example returns binary data.
+             *  However, event handler can also be used in case chunked encoding is used.
+             */
+            if (!esp_http_client_is_chunked_response(evt->client)) {
+                // If user_data buffer is configured, copy the response into the buffer
+                if (evt->user_data) {
+                    memcpy(evt->user_data + output_len, evt->data, evt->data_len);
+                } else {
+                    if (output_buffer == NULL) {
+                        output_buffer = (char *) malloc(esp_http_client_get_content_length(evt->client));
+                        output_len = 0;
+                        if (output_buffer == NULL) {
+                            ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
+                            return ESP_FAIL;
+                        }
+                    }
+                    memcpy(output_buffer + output_len, evt->data, evt->data_len);
+                }
+                output_len += evt->data_len;
+            }
+
+            break;
+        case HTTP_EVENT_ON_FINISH:
+            ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
+            if (output_buffer != NULL) {
+                // Response is accumulated in output_buffer. Uncomment the below line to print the accumulated response
+                // ESP_LOG_BUFFER_HEX(TAG, output_buffer, output_len);
+                free(output_buffer);
+                output_buffer = NULL;
+            }
+            output_len = 0;
+            break;
+        case HTTP_EVENT_DISCONNECTED:
+            ESP_LOGI(TAG, "HTTP_EVENT_DISCONNECTED");
+            int mbedtls_err = 0;
+            esp_err_t err = esp_tls_get_and_clear_last_error(evt->data, &mbedtls_err, NULL);
+            if (err != 0) {
+                if (output_buffer != NULL) {
+                    free(output_buffer);
+                    output_buffer = NULL;
+                }
+                output_len = 0;
+                ESP_LOGI(TAG, "Last esp error code: 0x%x", err);
+                ESP_LOGI(TAG, "Last mbedtls failure: 0x%x", mbedtls_err);
+            }
+            break;
+    }
+    return ESP_OK;
+}
+
+void init_weather(void *arg) {
+    char local_response_buffer[5120] = {0};
+
+    esp_http_client_config_t config = {
+        .host = "d1.weather.com.cn",
+        .path = "/weather_index/101280601.html",
+        .user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+        .method = HTTP_METHOD_GET,
+        .event_handler = _http_event_handler,
+        .user_data = local_response_buffer,
+        .disable_auto_redirect = true,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    esp_http_client_set_header(client, "Referer", "http://www.weather.com.cn/");
+
+    esp_err_t err = esp_http_client_perform(client);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %d",
+                esp_http_client_get_status_code(client),
+                esp_http_client_get_content_length(client));
+    } else {
+        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+    }
+
+    // ESP_LOGI(TAG, "%s", local_response_buffer);
+
+    strtok(local_response_buffer, "=");
+    char *dz = strtok(NULL, "=");
+    char *alarm = strtok(NULL, "=");
+    char *sk = strtok(NULL, "=");
+    char *zs = strtok(NULL, "=");
+    char *fc = strtok(NULL, "=");
+
+    cJSON *dz_json = cJSON_Parse(dz);
+    if (dz_json == NULL) {
+        ESP_LOGE(TAG, "json parse error: %s", cJSON_GetErrorPtr());
+        vTaskDelete(NULL);
+    }
+    cJSON *weatherinfo = cJSON_GetObjectItemCaseSensitive(dz_json, "weatherinfo");
+    cJSON *weather = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weather");
+    if (cJSON_IsString(weather) && (weather->valuestring != NULL)) {
+        wea.weather = weather->valuestring;
+    }
+
+    cJSON *fc_json = cJSON_Parse(fc);
+    cJSON *f = cJSON_GetObjectItemCaseSensitive(fc_json, "f");
+    cJSON *ff = cJSON_DetachItemFromArray(f, 0);
+
+    cJSON *low = cJSON_GetObjectItemCaseSensitive(ff, "fd");
+    if (cJSON_IsString(low) && (low->valuestring != NULL)) {
+        wea.low = low->valuestring;
+    }
+    cJSON *high = cJSON_GetObjectItemCaseSensitive(ff, "fc");
+    if (cJSON_IsString(high) && (high->valuestring != NULL)) {
+        wea.high = high->valuestring;
+    }
+
+    vTaskDelete(NULL);
+}
+
+void update_data(void *arg) {
+    while(true) {
+        vTaskDelay(1000 * 60 * 5 / portTICK_PERIOD_MS);
+
+        // 获取天气信息
+        xTaskCreatePinnedToCore(init_weather, "InitWeather", 1024 * 8, NULL, 1, NULL, tskNO_AFFINITY);
+    }
+}
+
 void app_main(void) {
     ESP_LOGI(TAG, "APP is start!!!");
 
@@ -305,5 +469,8 @@ void app_main(void) {
 
     xTaskCreatePinnedToCore(task_wifi_init, "WiFiInit", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
 
-    xTaskCreatePinnedToCore(task_display_process, "DisplayProcess", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(display_process, "DisplayProcess", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
+
+    xTaskCreatePinnedToCore(update_data, "UpdateData", 1024, NULL, 1, NULL, tskNO_AFFINITY);
+
 }
