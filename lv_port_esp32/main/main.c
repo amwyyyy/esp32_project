@@ -30,12 +30,15 @@
 #include "lvgl_helpers.h"
 
 #include "iboxchain-logo.c"
+#include "myfont_3500hz_18.c"
 
 /*********************
  *      DEFINES
  *********************/
 #define TAG "clock"
 #define LV_TICK_PERIOD_MS 1
+
+LV_FONT_DECLARE(myfont_3500hz_18);
 
 /**********************
  *  STATIC PROTOTYPES
@@ -164,9 +167,15 @@ static void func_test() {
     lv_img_set_src(img1, &iboxchain_logo);
     lv_obj_align(img1, NULL, LV_ALIGN_CENTER, 0, -20);
 
-    // lv_obj_t * img2 = lv_img_create(lv_scr_act(), NULL);
-    // lv_img_set_src(img2, LV_SYMBOL_OK "Accept");
-    // lv_obj_align(img2, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
+    static lv_style_t bg_style;
+    lv_style_init(&bg_style);	
+    lv_style_set_text_font(&bg_style, LV_STATE_DEFAULT, &myfont_3500hz_18); 
+	lv_style_set_text_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
+
+    lv_obj_t * label1 =  lv_label_create(lv_scr_act(), NULL);
+    lv_label_set_text(label1, "诚信 利他 协作 创新");
+    lv_obj_add_style(label1, LV_LABEL_PART_MAIN, &bg_style);
+    lv_obj_align(label1, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
 }
 
 static void lv_tick_task(void *arg) {
