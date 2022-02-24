@@ -29,6 +29,8 @@
 
 #include "lvgl_helpers.h"
 
+#include "iboxchain-logo.c"
+
 /*********************
  *      DEFINES
  *********************/
@@ -126,7 +128,7 @@ static void guiTask(void *pvParameter) {
     vTaskDelete(NULL);
 }
 
-LV_IMG_DECLARE(img_cogwheel_argb)
+LV_IMG_DECLARE(iboxchain_logo)
 
 static void func_test() {
     // lv_obj_t * label1 =  lv_label_create(lv_scr_act(), NULL);
@@ -159,12 +161,12 @@ static void func_test() {
     // lv_obj_add_style(line1, LV_LINE_PART_MAIN, &style_line);
 
     lv_obj_t * img1 = lv_img_create(lv_scr_act(), NULL);
-    lv_img_set_src(img1, &img_cogwheel_argb);
+    lv_img_set_src(img1, &iboxchain_logo);
     lv_obj_align(img1, NULL, LV_ALIGN_CENTER, 0, -20);
 
-    lv_obj_t * img2 = lv_img_create(lv_scr_act(), NULL);
-    lv_img_set_src(img2, LV_SYMBOL_OK "Accept");
-    lv_obj_align(img2, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
+    // lv_obj_t * img2 = lv_img_create(lv_scr_act(), NULL);
+    // lv_img_set_src(img2, LV_SYMBOL_OK "Accept");
+    // lv_obj_align(img2, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
 }
 
 static void lv_tick_task(void *arg) {
