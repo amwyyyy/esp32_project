@@ -5,7 +5,7 @@
 #include "cp437font.h"
 
 #define NUMBER_OF_DEVICES 4 //串联led矩阵连接数
-#define CS_PIN 15
+#define CS_PIN 5
 #define CLK_PIN 18
 #define MISO_PIN 2 //我们不使用此引脚只需填写匹配构造函数
 #define MOSI_PIN 23
@@ -90,7 +90,7 @@ void setup() {
   Serial.begin(115200);
   ledMatrix.init();
 
-  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 2, NULL, 1, NULL, ARDUINO_RUNNING_CORE);
+  xTaskCreatePinnedToCore(TaskUpdateData, "TaskUpdateData", 1024 * 4, NULL, 1, NULL, 1);
 }
 
 char *lt = (char *) malloc(4);
