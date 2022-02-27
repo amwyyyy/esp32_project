@@ -1,0 +1,5 @@
+Removed Pin From Net: NetName=PA_OUTL+ Pin=J2-1
+Removed Pin From Net: NetName=PA_OUTL- Pin=J2-2
+Added Pin To Net: NetName=PA_OUTL- Pin=J2-1
+Added Pin To Net: NetName=PA_OUTL+ Pin=J2-2
+Added Room: Name=lononTV

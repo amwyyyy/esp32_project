@@ -1,0 +1,4 @@
+Removed Pin From Net: NetName=VCC33 Pin=C7-1
+Removed Pin From Net: NetName=GND Pin=C7-2
+Removed Member From Class: ClassName=lononTV Member=C7
+Added Room: Name=lononTV

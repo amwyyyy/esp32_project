@@ -1,0 +1,14 @@
+Removed Pin From Net: NetName=VCC Pin=C28-2
+Removed Pin From Net: NetName=VCC Pin=C31-1
+Removed Pin From Net: NetName=VCC Pin=J1-A9
+Removed Pin From Net: NetName=VCC Pin=J1-B4
+Removed Pin From Net: NetName=VCC Pin=U6-1
+Removed Pin From Net: NetName=VCC Pin=U6-6
+Added Pin To Net: NetName=VCC_SP Pin=C28-2
+Added Pin To Net: NetName=VCC_SP Pin=C31-1
+Added Pin To Net: NetName=VCC_SP Pin=J1-A9
+Added Pin To Net: NetName=VCC_SP Pin=J1-B4
+Added Pin To Net: NetName=VCC_SP Pin=U6-1
+Added Pin To Net: NetName=VCC_SP Pin=U6-6
+Added Net: Name=VCC_SP
+Added Room: Name=lononTV

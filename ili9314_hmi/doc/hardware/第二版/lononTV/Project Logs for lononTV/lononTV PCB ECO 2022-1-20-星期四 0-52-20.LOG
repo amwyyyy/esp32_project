@@ -1,0 +1,5 @@
+Removed Pin From Net: NetName=I2S_LRCK Pin=U2-27
+Removed Pin From Net: NetName=I2S_SDO Pin=U2-28
+Added Pin To Net: NetName=I2S_SDO Pin=U2-27
+Added Pin To Net: NetName=I2S_LRCK Pin=U2-28
+Added Room: Name=lononTV

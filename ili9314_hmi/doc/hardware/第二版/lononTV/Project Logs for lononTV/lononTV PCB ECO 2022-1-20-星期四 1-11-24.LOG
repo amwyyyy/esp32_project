@@ -1,0 +1,5 @@
+Removed Pin From Net: NetName=DECODER_B Pin=U2-6
+Removed Pin From Net: NetName=DECODER_A Pin=U2-8
+Added Pin To Net: NetName=DECODER_A Pin=U2-6
+Added Pin To Net: NetName=DECODER_B Pin=U2-8
+Added Room: Name=lononTV

@@ -1,0 +1,19 @@
+Removed Pin From Net: NetName=DECODER_A Pin=U2-6
+Removed Pin From Net: NetName=DECODER_B Pin=U2-8
+Added Component: Designator=C45(C0603 - duplicate)
+Added Component: Designator=S3(C400237_KT∫Ï÷·)
+Added Pin To Net: NetName=GND Pin=C45-2
+Added Pin To Net: NetName=GND Pin=S3-2
+Added Pin To Net: NetName=DECODER_A Pin=U2-5
+Added Pin To Net: NetName=DECODER_B Pin=U2-7
+Added Pin To Net: NetName=BUTTON_3 Pin=C45-1
+Added Pin To Net: NetName=BUTTON_3 Pin=S3-1
+Added Pin To Net: NetName=BUTTON_3 Pin=U2-8
+Added Net: Name=BUTTON_3
+Added Pin To Net: NetName=DECODER_SW Pin=C42-1
+Added Pin To Net: NetName=DECODER_SW Pin=P4-2
+Added Pin To Net: NetName=DECODER_SW Pin=U2-6
+Added Net: Name=DECODER_SW
+Added Member To Class: ClassName=lononTV Member=Component C45 104
+Added Member To Class: ClassName=lononTV Member=Component S3 6X6X6mm
+Added Room: Name=lononTV

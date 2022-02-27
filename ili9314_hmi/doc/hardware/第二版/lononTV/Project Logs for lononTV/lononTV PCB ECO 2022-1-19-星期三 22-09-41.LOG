@@ -1,0 +1,8 @@
+Removed Pin From Net: NetName=VCC33 Pin=<<<-1
+Removed Pin From Net: NetName=GPIO0 Pin=<<<-2
+Removed Pin From Net: NetName=ESP32_RESET Pin=<<<-3
+Removed Pin From Net: NetName=U0TXD Pin=<<<-4
+Removed Pin From Net: NetName=U0RXD Pin=<<<-5
+Removed Pin From Net: NetName=GND Pin=<<<-6
+Removed Member From Class: ClassName=lononTV Member=<<<
+Added Room: Name=lononTV

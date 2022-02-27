@@ -1,0 +1,7 @@
+Removed Pin From Net: NetName=BUTTON_1 Pin=U2-19
+Removed Pin From Net: NetName=BUTTON_2 Pin=U2-20
+Removed Pin From Net: NetName=BUTTON_3 Pin=U2-21
+Added Pin To Net: NetName=BUTTON_1 Pin=U2-8
+Added Pin To Net: NetName=BUTTON_2 Pin=U2-9
+Added Pin To Net: NetName=BUTTON_3 Pin=U2-10
+Added Room: Name=lononTV

@@ -1,0 +1,5 @@
+Added Pin To Net: NetName=BUTTON_1 Pin=S1-1
+Added Pin To Net: NetName=GND Pin=S1-2
+Added Pin To Net: NetName=BUTTON_2 Pin=S2-1
+Added Pin To Net: NetName=GND Pin=S2-2
+Added Room: Name=lononTV

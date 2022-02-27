@@ -1,0 +1,23 @@
+Removed Pin From Net: NetName=GND Pin=P4-1
+Removed Pin From Net: NetName=DECODER_B Pin=P4-2
+Added Component: Designator=S1(C400237_KT∫Ï÷·)
+Added Component: Designator=S2(C400237_KT∫Ï÷·)
+Added Component: Designator=S3(C400237_KT∫Ï÷·)
+Added Pin To Net: NetName=DECODER_B Pin=P4-1
+Added Pin To Net: NetName=GND Pin=P4-2
+Added Pin To Net: NetName=GND Pin=S1-2
+Added Pin To Net: NetName=GND Pin=S2-2
+Added Pin To Net: NetName=GND Pin=S3-2
+Added Pin To Net: NetName=BUTTON_1 Pin=S1-1
+Added Pin To Net: NetName=BUTTON_1 Pin=U2-19
+Added Net: Name=BUTTON_1
+Added Pin To Net: NetName=BUTTON_2 Pin=S2-1
+Added Pin To Net: NetName=BUTTON_2 Pin=U2-20
+Added Net: Name=BUTTON_2
+Added Pin To Net: NetName=BUTTON_3 Pin=S3-1
+Added Pin To Net: NetName=BUTTON_3 Pin=U2-21
+Added Net: Name=BUTTON_3
+Added Member To Class: ClassName=lononTV Member=Component S1 6X6X6mm
+Added Member To Class: ClassName=lononTV Member=Component S2 6X6X6mm
+Added Member To Class: ClassName=lononTV Member=Component S3 6X6X6mm
+Added Room: Name=lononTV

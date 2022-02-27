@@ -1,0 +1,12 @@
+Removed Pin From Net: NetName=GND Pin=C29-1
+Removed Pin From Net: NetName=VCC Pin=C29-2
+Removed Member From Class: ClassName=lononTV Member=C29
+Added Pin To Net: NetName=GND Pin=P3-1
+Added Pin To Net: NetName=VCC33 Pin=P3-2
+Added Pin To Net: NetName=SCREEN_SCK Pin=P3-3
+Added Pin To Net: NetName=SCREEN_MOSI Pin=P3-4
+Added Pin To Net: NetName=SCREEN_RESET Pin=P3-5
+Added Pin To Net: NetName=SCREEN_DC Pin=P3-6
+Added Pin To Net: NetName=SCREEN_CS Pin=P3-7
+Added Pin To Net: NetName=SCREEN_LED Pin=P3-8
+Added Room: Name=lononTV

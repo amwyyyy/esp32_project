@@ -1,0 +1,7 @@
+Added Component: Designator=U2(ÃÀÉÏÃÀSIQ-02FVS3¹öÂÖ±àÂëÆ÷)
+Added Pin To Net: NetName=NetP1_1 Pin=U2-1
+Added Pin To Net: NetName=NetP1_2 Pin=U2-2
+Added Pin To Net: NetName=NetP1_3 Pin=U2-3
+Added Pin To Net: NetName=NetP1_4 Pin=U2-4
+Added Member To Class: ClassName=encoder Member=Component U2 SIQ-02FVS3¹öÂÖ±àÂëÆ÷
+Added Room: Name=encoder

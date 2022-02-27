@@ -1,0 +1,10 @@
+Added Component: Designator=D1(d0805)
+Added Component: Designator=R22(0603R)
+Added Pin To Net: NetName=VCC33 Pin=D1-A
+Added Pin To Net: NetName=GND Pin=R22-1
+Added Pin To Net: NetName=NetD1_K Pin=D1-K
+Added Pin To Net: NetName=NetD1_K Pin=R22-2
+Added Net: Name=NetD1_K
+Added Member To Class: ClassName=lononTV Member=Component D1 
+Added Member To Class: ClassName=lononTV Member=Component R22 330R
+Added Room: Name=lononTV
