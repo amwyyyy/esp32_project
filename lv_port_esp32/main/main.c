@@ -19,6 +19,7 @@
 #include "freertos/semphr.h"
 #include "esp_system.h"
 #include "driver/gpio.h"
+#include "driver/ledc.h"
 
 /* Littlevgl specific */
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -29,8 +30,8 @@
 
 #include "lvgl_helpers.h"
 
-#include "iboxchain-logo.c"
-#include "myfont_3500hz_18.c"
+// #include "iboxchain-logo.c"
+// #include "myfont_3500hz_18.c"
 
 /*********************
  *      DEFINES
@@ -38,7 +39,7 @@
 #define TAG "clock"
 #define LV_TICK_PERIOD_MS 1
 
-LV_FONT_DECLARE(myfont_3500hz_18);
+// LV_FONT_DECLARE(myfont_3500hz_18);
 
 /**********************
  *  STATIC PROTOTYPES
@@ -47,10 +48,64 @@ static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
 static void func_test();
 
+
+#define LEDC_HS_TIMER LEDC_TIMER_0
+#define LEDC_HS_MODE LEDC_HIGH_SPEED_MODE
+#define LEDC_HS_CH0_GPIO (22)
+#define LEDC_HS_CH0_CHANNEL LEDC_CHANNEL_0
+#define LEDC_LS_TIMER LEDC_TIMER_1
+#define LEDC_LS_MODE LEDC_LOW_SPEED_MODE
+
+#define LEDC_TEST_CH_NUM (1)
+#define LEDC_TEST_DUTY (4000)
+#define LEDC_TEST_FADE_TIME (3000)
+
+ledc_channel_config_t ledc_channel[LEDC_TEST_CH_NUM] = {
+    {.channel = LEDC_HS_CH0_CHANNEL,
+     .duty = 0,
+     .gpio_num = LEDC_HS_CH0_GPIO,
+     .speed_mode = LEDC_HS_MODE,
+     .hpoint = 0,
+     .timer_sel = LEDC_HS_TIMER},
+};
+
+void pwm_init() {
+    int ch;
+
+    ledc_timer_config_t ledc_timer = {
+        .duty_resolution = LEDC_TIMER_8_BIT, // resolution of PWM duty
+        .freq_hz = 5000,                     // frequency of PWM signal
+        .speed_mode = LEDC_LS_MODE,          // timer mode
+        .timer_num = LEDC_LS_TIMER,          // timer index
+        .clk_cfg = LEDC_AUTO_CLK,            // Auto select the source clock
+    };
+    ledc_timer_config(&ledc_timer);
+
+    ledc_timer.speed_mode = LEDC_HS_MODE;
+    ledc_timer.timer_num = LEDC_HS_TIMER;
+    ledc_timer_config(&ledc_timer);
+
+    for (ch = 0; ch < LEDC_TEST_CH_NUM; ch++) {
+        ledc_channel_config(&ledc_channel[ch]);
+    }
+
+    ledc_fade_func_install(0);
+
+    uint32_t value = 0;
+
+    uint32_t bl = (0xFF - 200) + (value * 20);
+    printf("3. LEDC set duty = %d without fade\n", bl);
+    for (ch = 0; ch < LEDC_TEST_CH_NUM; ch++) {
+        ledc_set_duty(ledc_channel[ch].speed_mode, ledc_channel[ch].channel, 1000);
+        ledc_update_duty(ledc_channel[ch].speed_mode, ledc_channel[ch].channel);
+    }
+}
+
 /**********************
  *   APPLICATION MAIN
  **********************/
 void app_main() {
+    pwm_init();
 
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
      * Otherwise there can be problem such as memory corruption and so on.
@@ -131,51 +186,47 @@ static void guiTask(void *pvParameter) {
     vTaskDelete(NULL);
 }
 
-LV_IMG_DECLARE(iboxchain_logo)
+// LV_IMG_DECLARE(iboxchain_logo)
 
 static void func_test() {
+    lv_obj_t * btn = lv_btn_create(lv_scr_act(), NULL);
+    lv_obj_set_pos(btn, 10, 10);
+    lv_obj_set_size(btn, 120, 50);
+    lv_obj_t * label = lv_label_create(btn, NULL);
+    lv_label_set_text(label, "Button 1");
+
+    lv_obj_t * slider = lv_slider_create(lv_scr_act(), NULL);
+    lv_obj_set_width(slider, 150); 
+    lv_obj_align(slider, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -40);
+
+    label = lv_label_create(lv_scr_act(), NULL);
+    lv_label_set_text(label, "0");
+    lv_obj_set_auto_realign(slider, true);
+    lv_obj_align(label, slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
+
+    static lv_style_t style_line;
+    lv_style_init(&style_line);
+    lv_style_set_line_width(&style_line, LV_STATE_DEFAULT, 2);
+
+    static lv_point_t line_points[] = { {0, 70}, {240, 70} };
+    lv_obj_t * line1;
+    line1 = lv_line_create(lv_scr_act(), NULL);
+    lv_line_set_points(line1, line_points, 2);
+    lv_obj_add_style(line1, LV_LINE_PART_MAIN, &style_line);
+
+    // lv_obj_t * img1 = lv_img_create(lv_scr_act(), NULL);
+    // lv_img_set_src(img1, &iboxchain_logo);
+    // lv_obj_align(img1, NULL, LV_ALIGN_CENTER, 0, -20);
+
+    // static lv_style_t bg_style;
+    // lv_style_init(&bg_style);	
+    // lv_style_set_text_font(&bg_style, LV_STATE_DEFAULT, &myfont_3500hz_18); 
+	// lv_style_set_text_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
+
     // lv_obj_t * label1 =  lv_label_create(lv_scr_act(), NULL);
-    // lv_label_set_text(label1, "Hello world");
-    // lv_obj_align(label1, NULL, LV_ALIGN_CENTER, 0, 0);
-
-    // lv_obj_t * btn = lv_btn_create(lv_scr_act(), NULL);
-    // lv_obj_set_pos(btn, 10, 10);
-    // lv_obj_set_size(btn, 120, 50);
-    // lv_obj_t * label = lv_label_create(btn, NULL);
-    // lv_label_set_text(label, "Button 1");
-
-    // lv_obj_t * slider = lv_slider_create(lv_scr_act(), NULL);
-    // lv_obj_set_width(slider, 150); 
-    // lv_obj_align(slider, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, -40);
-
-    // label = lv_label_create(lv_scr_act(), NULL);
-    // lv_label_set_text(label, "0");
-    // lv_obj_set_auto_realign(slider, true);
-    // lv_obj_align(label, slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
-
-    // static lv_style_t style_line;
-    // lv_style_init(&style_line);
-    // lv_style_set_line_width(&style_line, LV_STATE_DEFAULT, 2);
-
-    // static lv_point_t line_points[] = { {0, 70}, {240, 70} };
-    // lv_obj_t * line1;
-    // line1 = lv_line_create(lv_scr_act(), NULL);
-    // lv_line_set_points(line1, line_points, 2);
-    // lv_obj_add_style(line1, LV_LINE_PART_MAIN, &style_line);
-
-    lv_obj_t * img1 = lv_img_create(lv_scr_act(), NULL);
-    lv_img_set_src(img1, &iboxchain_logo);
-    lv_obj_align(img1, NULL, LV_ALIGN_CENTER, 0, -20);
-
-    static lv_style_t bg_style;
-    lv_style_init(&bg_style);	
-    lv_style_set_text_font(&bg_style, LV_STATE_DEFAULT, &myfont_3500hz_18); 
-	lv_style_set_text_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
-
-    lv_obj_t * label1 =  lv_label_create(lv_scr_act(), NULL);
-    lv_label_set_text(label1, "诚信 利他 协作 创新");
-    lv_obj_add_style(label1, LV_LABEL_PART_MAIN, &bg_style);
-    lv_obj_align(label1, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
+    // lv_label_set_text(label1, "诚信 利他 协作 创新");
+    // lv_obj_add_style(label1, LV_LABEL_PART_MAIN, &bg_style);
+    // lv_obj_align(label1, img1, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
 }
 
 static void lv_tick_task(void *arg) {
