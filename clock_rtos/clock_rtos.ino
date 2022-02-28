@@ -551,7 +551,7 @@ void TaskNtpTime(void *pvParameters) {
     Serial.println("config ntp time finish!");
     
     if (*create == 1) {
-      xTaskCreatePinnedToCore(TaskDisplay, "TaskDisplay", 1024 * 2, NULL, 3, NULL, tskNO_AFFINITY);
+      xTaskCreatePinnedToCore(TaskDisplay, "TaskDisplay", 1024 * 4, NULL, 3, NULL, tskNO_AFFINITY);
     }
 
     ntpConfigFlag = true;
@@ -604,7 +604,7 @@ void TaskGetCityCode(void *pvParameters) {
     vTaskDelay(50);
   }
 
-  xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, tskNO_AFFINITY);
+  xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 4, NULL, 2, NULL, tskNO_AFFINITY);
   vTaskDelete(NULL);
 }
 
@@ -765,7 +765,7 @@ void TaskUpdateData(void *pvParameters) {
     if (updateWeather == updateWeatherPeriod) {
       quickConnectWiFi();
       weatherFlag = false;
-      xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 3, NULL, 2, NULL, tskNO_AFFINITY);
+      xTaskCreatePinnedToCore(TaskGetCityWeather, "GetCityWeather", 1024 * 4, NULL, 2, NULL, tskNO_AFFINITY);
       updateWeather = 0;
     }
 
@@ -773,7 +773,7 @@ void TaskUpdateData(void *pvParameters) {
     if (updateNtp == updateNtpPeriod) {
       quickConnectWiFi();
       ntpConfigFlag = false;
-      xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, (void *) &UN_CREATE, 3, NULL, tskNO_AFFINITY);
+      xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 4, (void *) &UN_CREATE, 3, NULL, tskNO_AFFINITY);
       updateNtp = 0;
     }
     
@@ -844,15 +844,15 @@ void setup() {
   drawGrid();
 
   // 连接WiFi后同步网络时间
-  xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 1.5, (void *) &CREATE, 3, NULL, tskNO_AFFINITY);
+  xTaskCreatePinnedToCore(TaskNtpTime, "NtpTime", 1024 * 2, (void *) &CREATE, 3, NULL, tskNO_AFFINITY);
   // 获取城市编码
-  xTaskCreatePinnedToCore(TaskGetCityCode, "GetCityCode", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
+  xTaskCreatePinnedToCore(TaskGetCityCode, "GetCityCode", 1024 * 4, NULL, 2, NULL, tskNO_AFFINITY);
   // 定时更新数据
-  xTaskCreatePinnedToCore(TaskUpdateData, "UpdateData", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
+  xTaskCreatePinnedToCore(TaskUpdateData, "UpdateData", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
   // 定时端口闲置 WiFI
-  xTaskCreatePinnedToCore(TaskDisconnectWiFi, "DisconnectWiFi", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
+  xTaskCreatePinnedToCore(TaskDisconnectWiFi, "DisconnectWiFi", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
   // 按时间调整屏幕亮度
-  xTaskCreatePinnedToCore(TaskTftBrightness, "TftBrightness", 1024, NULL, 1, NULL, tskNO_AFFINITY);
+  xTaskCreatePinnedToCore(TaskTftBrightness, "TftBrightness", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
 }
 
 void loop() {
