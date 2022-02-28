@@ -167,6 +167,7 @@ static void guiTask(void *pvParameter) {
     // create_demo_application();
     func_test();
 
+    int a = 0;
     while (1) {
         /* Delay 1 tick (assumes FreeRTOS tick is 10ms */
         vTaskDelay(pdMS_TO_TICKS(10));
