@@ -13,10 +13,10 @@
 #include "sdkconfig.h"
 #include "u8g2_esp32_hal.h"
 
-#define PIN_SDA 21
-#define PIN_SCL 22
+#define PIN_SDA 20
+#define PIN_SCL 21
 
-#define BLINK_GPIO 2
+#define BLINK_GPIO 19
 #define HIGH 1
 #define LOW  0
 
@@ -106,9 +106,9 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
         // 亮灯
         light_led();
         // 设置状态
-        wifi_connected = true;
+        wifi_connect_status = true;
         // 启动同步网络时间任务
-        xTaskCreatePinnedToCore(initialize_sntp, "InitializeSntp", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
+        xTaskCreatePinnedToCore(task_init_sntp, "InitializeSntp", 1024 * 2, NULL, 1, NULL, tskNO_AFFINITY);
         // 获取天气信息
         xTaskCreatePinnedToCore(init_weather, "InitWeather", 1024 * 8, NULL, 1, NULL, tskNO_AFFINITY);
     }
@@ -419,9 +419,9 @@ void init_weather(void *arg) {
 
     strtok(local_response_buffer, "=");
     char *dz = strtok(NULL, "=");
-    char *alarm = strtok(NULL, "=");
-    char *sk = strtok(NULL, "=");
-    char *zs = strtok(NULL, "=");
+    // char *alarm = strtok(NULL, "=");
+    // char *sk = strtok(NULL, "=");
+    // char *zs = strtok(NULL, "=");
     char *fc = strtok(NULL, "=");
 
     cJSON *dz_json = cJSON_Parse(dz);
@@ -469,7 +469,7 @@ void app_main(void) {
 
     xTaskCreatePinnedToCore(task_wifi_init, "WiFiInit", 1024 * 4, NULL, 1, NULL, tskNO_AFFINITY);
 
-    xTaskCreatePinnedToCore(display_process, "DisplayProcess", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(task_display_process, "DisplayProcess", 1024 * 2, NULL, 2, NULL, tskNO_AFFINITY);
 
     xTaskCreatePinnedToCore(update_data, "UpdateData", 1024, NULL, 1, NULL, tskNO_AFFINITY);
 
