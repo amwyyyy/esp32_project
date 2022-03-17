@@ -15,9 +15,6 @@
 #include "esp_wifi_types.h"
 #include "freertos/event_groups.h"
 
-/* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_wifi_event_group;
-
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
  * - we failed to connect after the maximum amount of retries */
@@ -26,6 +23,7 @@ static EventGroupHandle_t s_wifi_event_group;
 
 xQueueHandle wifi_evt_queue;
 
+static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "wifi_init";
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
@@ -48,7 +46,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
          *   发送连接失败
          */
         wifi_sta_fig = WIFI_EVENT_STA_DISCONNECTED;
-        xQueueSendFromISR(wifi_evt_queue, &wifi_sta_fig, NULL);
+        xQueueSend(wifi_evt_queue, &wifi_sta_fig, NULL);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
@@ -59,7 +57,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
          *   发送已连接
          */
         wifi_sta_fig = WIFI_EVENT_STA_CONNECTED;
-        xQueueSendFromISR(wifi_evt_queue, &wifi_sta_fig, NULL);
+        xQueueSend(wifi_evt_queue, &wifi_sta_fig, NULL);
     }
 }
 

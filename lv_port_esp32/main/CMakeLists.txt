@@ -3,4 +3,5 @@ idf_component_register(SRCS "main.c"
                             "storage.c"
                             "gui.c"
                             "wifi.c"
+                            "sntp_time.c"
                        INCLUDE_DIRS "" "inc")
