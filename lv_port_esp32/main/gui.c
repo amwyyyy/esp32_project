@@ -83,10 +83,9 @@ void clock_task(lv_task_t * task) {
 }
 
 static uint32_t in = 0;
-lv_obj_t * img1;
+static lv_obj_t * img1;
 void img_task(lv_task_t * task) {
     lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
-    // lv_obj_clean(img1);
 
     switch (in++)
     {

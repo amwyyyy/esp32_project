@@ -27,6 +27,7 @@
 #include "gui.h"
 #include "wifi.h"
 #include "sntp_time.h"
+#include "weather.h"
 
 #define TAG "main"
 

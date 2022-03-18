@@ -1,5 +1,5 @@
-#ifndef _lvgl_init_h_
-#define _lvgl_init_h_
+#ifndef _gui_h_
+#define _gui_h_
 
 /**
  * @brief 初始化 lvgl
