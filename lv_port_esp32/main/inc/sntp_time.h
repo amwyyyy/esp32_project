@@ -8,7 +8,7 @@ typedef struct {
     int hour;
     int minute;
     int second;
-} date_time;
+} date_time_t;
 
 /**
  * @brief 初始化 sntp
@@ -19,6 +19,6 @@ esp_err_t sntp_time_init(void);
 /**
  * @brief 获取当前时间
  */
-date_time get_now_time(void);
+date_time_t get_now_time(void);
 
 #endif

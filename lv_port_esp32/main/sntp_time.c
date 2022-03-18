@@ -37,10 +37,10 @@ esp_err_t sntp_time_init(void) {
     return ESP_OK;
 }
 
-date_time get_now_time(void) {
+date_time_t get_now_time(void) {
     time_t now = 0;
     struct tm timeinfo = {0};
-    date_time dt;
+    date_time_t dt;
 
     time(&now);
     localtime_r(&now, &timeinfo);
@@ -52,7 +52,7 @@ date_time get_now_time(void) {
     dt.minute = timeinfo.tm_min;
     dt.second = timeinfo.tm_sec;
 
-    ESP_LOGI(TAG, "current time: %d-%d-%d %d:%d:%d",
+    ESP_LOGD(TAG, "current time: %d-%d-%d %d:%d:%d",
 			 dt.year, dt.month,
 			 dt.day, dt.hour,
 			 dt.minute, dt.second); 

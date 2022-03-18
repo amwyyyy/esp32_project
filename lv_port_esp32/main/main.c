@@ -28,9 +28,6 @@
 #include "wifi.h"
 #include "sntp_time.h"
 
-// #include "myfont_3500hz_18.c"
-// LV_FONT_DECLARE(myfont_3500hz_18);
-
 #define TAG "main"
 
 /**
@@ -52,15 +49,13 @@ void app_main() {
 
     pwm_init();
 
-    gui_init();
-
-    // set_wifi_info("xiongda", "15999554794");
+    set_wifi_info("xiongda", "15999554794");
 
     connect_wifi();
 
     sntp_time_init();
 
-    get_now_time();
+    gui_init();
 
     ESP_LOGI(TAG, "[APP] Free internal memory: %d kb", esp_get_free_internal_heap_size() / 1024);
     ESP_LOGI(TAG, "[APP] Free all memory: %d kb", esp_get_free_heap_size() / 1024);
