@@ -28,8 +28,10 @@
 
 // #include "font/myfont_3500hz_18.c"
 // LV_FONT_DECLARE(myfont_3500hz_18);
-// #include "lv_font_montserrat_30.c"
-// LV_FONT_DECLARE(lv_font_montserrat_30);
+#include "font/dig.c"
+LV_FONT_DECLARE(dig);
+#include "lv_font/lv_font.h"
+
 LV_IMG_DECLARE(tkr1)
 LV_IMG_DECLARE(tkr2)
 LV_IMG_DECLARE(tkr3)
@@ -59,21 +61,20 @@ static lv_obj_t * scene_img;
 void clock_task(lv_task_t * task) {
     lv_obj_clean(scene_bg);
 
+    static lv_style_t bg_style;
+    lv_style_init(&bg_style);	
+    lv_style_set_text_font(&bg_style, LV_STATE_DEFAULT, &dig);
+	lv_style_set_text_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_RED);
+
     lv_obj_t * label = lv_label_create(scene_bg, NULL);
-    lv_label_set_recolor(label, true);
+    // lv_label_set_recolor(label, true);
     lv_label_set_long_mode(label, LV_LABEL_LONG_EXPAND);
-    lv_obj_align(label, NULL, LV_ALIGN_IN_BOTTOM_MID, -60, 0);
+    lv_obj_align(label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, -30);
+    lv_obj_add_style(label, LV_LABEL_PART_MAIN, &bg_style);
 
     date_time_t dt = get_now_time();
-    lv_label_set_text_fmt(label, "%d-%02d-%02d %02d:%02d:%02d", 
-        dt.year, dt.month,
-	    dt.day, dt.hour,
-		dt.minute, dt.second);  
-
-    // static lv_style_t bg_style;
-    // lv_style_init(&bg_style);	
-    // lv_style_set_text_font(&bg_style, LV_STATE_DEFAULT, &myfont_3500hz_18);
-	// lv_style_set_text_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_RED);
+    lv_label_set_text_fmt(label, "%02d:%02d:%02d", 
+        dt.hour, dt.minute, dt.second);  
 
     // lv_obj_t * label = lv_label_create(obj1, NULL);
     // // lv_label_set_recolor(label, true);
