@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "esp_wifi_types.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/portmacro.h"
@@ -22,6 +23,8 @@
 #include "esp_system.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+
+#include "event.h"
 #include "storage.h"
 #include "pwm.h"
 #include "gui.h"
@@ -30,6 +33,10 @@
 #include "weather.h"
 
 #define TAG "main"
+
+xQueueHandle basic_evt_queue;
+
+static void event_handle(void *pvParameter);
 
 /**
  * @brief 开机自动连接wifi
@@ -45,7 +52,27 @@ void connect_wifi() {
     }
 }
 
+static void event_handle(void *pvParameter) {
+    uint32_t event_flag;
+
+    while (1) {
+        if (xQueueReceive(basic_evt_queue, &event_flag, portMAX_DELAY)) {
+            if (event_flag == EVENT_WIFI_STA_CONNECTED) {
+                printf("连接 wifi 成功!!!\n");
+                sntp_time_init();
+            } else if (event_flag == EVENT_SNTP_INIT) {
+                printf("同步 SNTP 时间成功\n");
+                gui_init();
+            }
+        }
+
+        vTaskDelay(200 / portTICK_PERIOD_MS);
+    }
+}
+
 void app_main() {
+    basic_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+
     storage_init();
 
     pwm_init();
@@ -54,9 +81,7 @@ void app_main() {
 
     connect_wifi();
 
-    sntp_time_init();
-
-    gui_init();
+    xTaskCreate(event_handle, "event", 1024 * 2, NULL, 1, NULL);
 
     ESP_LOGI(TAG, "[APP] Free internal memory: %d kb", esp_get_free_internal_heap_size() / 1024);
     ESP_LOGI(TAG, "[APP] Free all memory: %d kb", esp_get_free_heap_size() / 1024);

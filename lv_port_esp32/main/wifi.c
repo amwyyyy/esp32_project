@@ -14,6 +14,7 @@
 #include <esp_wifi.h>
 #include "esp_wifi_types.h"
 #include "freertos/event_groups.h"
+#include "event.h"
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
@@ -21,13 +22,13 @@
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
-xQueueHandle wifi_evt_queue;
+extern xQueueHandle basic_evt_queue;
 
 static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "wifi_init";
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    uint32_t wifi_sta_fig;
+    uint32_t wifi_sta_flag;
     static int s_retry_num = 0;
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -45,8 +46,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         /*
          *   发送连接失败
          */
-        wifi_sta_fig = WIFI_EVENT_STA_DISCONNECTED;
-        xQueueSend(wifi_evt_queue, &wifi_sta_fig, NULL);
+        wifi_sta_flag = EVENT_WIFI_STA_DISCONNECTED;
+        xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
@@ -56,8 +57,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         /*
          *   发送已连接
          */
-        wifi_sta_fig = WIFI_EVENT_STA_CONNECTED;
-        xQueueSend(wifi_evt_queue, &wifi_sta_fig, NULL);
+        wifi_sta_flag = EVENT_WIFI_STA_CONNECTED;
+        xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
     }
 }
 
@@ -73,8 +74,6 @@ void wifi_init_sta(char *ssid, char *pass) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    wifi_evt_queue = xQueueCreate(1, sizeof(uint32_t));
 
     // 注册 WiFi 事件
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));

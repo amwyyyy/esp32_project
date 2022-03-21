@@ -52,25 +52,23 @@ void gui_init(void) {
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
      * Otherwise there can be problem such as memory corruption and so on.
      * NOTE: When not using Wi-Fi nor Bluetooth you can pin the guiTask to core 0 */
-    xTaskCreatePinnedToCore(guiTask, "gui", 4096 * 2, NULL, 0, NULL, tskNO_AFFINITY);
+    xTaskCreatePinnedToCore(guiTask, "gui", 1024 * 8, NULL, 0, NULL, 1);
 }
 
 static lv_obj_t * scene_bg;
-static lv_obj_t * scene_img;
 
 void clock_task(lv_task_t * task) {
     lv_obj_clean(scene_bg);
 
-    static lv_style_t bg_style;
-    lv_style_init(&bg_style);	
-    lv_style_set_text_font(&bg_style, LV_STATE_DEFAULT, &dig);
-	lv_style_set_text_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_RED);
+    static lv_style_t label_style;
+    lv_style_init(&label_style);	
+    lv_style_set_text_font(&label_style, LV_STATE_DEFAULT, &dig);
+	lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_RED);
 
     lv_obj_t * label = lv_label_create(scene_bg, NULL);
-    // lv_label_set_recolor(label, true);
     lv_label_set_long_mode(label, LV_LABEL_LONG_EXPAND);
     lv_obj_align(label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, -30);
-    lv_obj_add_style(label, LV_LABEL_PART_MAIN, &bg_style);
+    lv_obj_add_style(label, LV_LABEL_PART_MAIN, &label_style);
 
     date_time_t dt = get_now_time();
     lv_label_set_text_fmt(label, "%02d:%02d:%02d", 
@@ -86,8 +84,6 @@ void clock_task(lv_task_t * task) {
 static uint32_t in = 0;
 static lv_obj_t * img1;
 void img_task(lv_task_t * task) {
-    lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
-
     switch (in++)
     {
     case 0:lv_img_set_src(img1, &tkr1);break;
@@ -109,21 +105,36 @@ void img_task(lv_task_t * task) {
 }
 
 void display() {
-    lv_obj_t * scr = lv_scr_act();
-    scene_bg = lv_obj_create(scr, NULL);
-    lv_obj_reset_style_list(scene_bg, LV_OBJ_PART_MAIN);
-    lv_obj_set_size(scene_bg, lv_obj_get_width(scr), lv_obj_get_height(scr)/2);
-    lv_obj_align(scene_bg, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+    static lv_style_t bg_style;
+    lv_style_init(&bg_style);	
+    lv_style_set_bg_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
 
-    scene_img = lv_obj_create(scr, NULL);
-    lv_obj_reset_style_list(scene_img, LV_OBJ_PART_MAIN);
-    lv_obj_set_size(scene_img, lv_obj_get_width(scr), lv_obj_get_height(scr)/2);
-    lv_obj_align(scene_img, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+    lv_obj_t * scr = lv_scr_act();
+    lv_obj_add_style(scr, LV_OBJ_PART_MAIN, &bg_style);
+
+    lv_obj_t * scene_main = lv_obj_create(scr, NULL);
+    lv_obj_reset_style_list(scene_main, LV_OBJ_PART_MAIN);
+    lv_obj_set_size(scene_main, lv_obj_get_width(scr), lv_obj_get_height(scr));
+    lv_obj_align(scene_main, NULL, LV_ALIGN_CENTER, 0, 0);
+
+    // 时间显示
+    scene_bg = lv_obj_create(scene_main, NULL);
+    lv_obj_reset_style_list(scene_bg, LV_OBJ_PART_MAIN);
+    lv_obj_set_size(scene_bg, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
+    lv_obj_align(scene_bg, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
 
     lv_task_t * task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
     lv_task_ready(task);
 
-    img1 = lv_img_create(scene_img, NULL);
+    // 图片显示
+    lv_obj_t * scene_img = lv_obj_create(scene_main, NULL);
+    lv_obj_reset_style_list(scene_img, LV_OBJ_PART_MAIN);
+    lv_obj_set_size(scene_img, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
+    lv_obj_align(scene_img, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+
+    img1 = lv_img_create(scene_main, NULL);
+    lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+
     lv_task_t * imgDisp = lv_task_create(img_task, 100, LV_TASK_PRIO_MID, NULL);
     lv_task_ready(imgDisp);
 }

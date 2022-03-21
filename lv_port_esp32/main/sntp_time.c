@@ -3,9 +3,14 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_sntp.h"
+#include "freertos/event_groups.h"
+
 #include "sntp_time.h"
+#include "event.h"
 
 #define TAG "sntp"
+
+extern xQueueHandle basic_evt_queue;
 
 esp_err_t sntp_time_init(void) {
     ESP_LOGI(TAG, "Initializing SNTP");
@@ -33,6 +38,9 @@ esp_err_t sntp_time_init(void) {
     } while (timeinfo.tm_year < 100);
 
     ESP_LOGI(TAG, "Finish SNTP");
+
+    uint32_t event_flag = EVENT_SNTP_INIT;
+    xQueueSend(basic_evt_queue, &event_flag, NULL);
 
     return ESP_OK;
 }
