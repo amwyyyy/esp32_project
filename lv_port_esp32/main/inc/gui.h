@@ -1,10 +1,30 @@
 #ifndef _gui_h_
 #define _gui_h_
 
+typedef enum {
+    DISP_LOADING = 0,
+    DISP_CLOCK,
+
+} display_type_t;
+
 /**
  * @brief 初始化 lvgl
  *
  */
 void gui_init(void);
+
+/**
+ * @brief 设置 loading 的显示文字
+ * 
+ * @param text 
+ */
+void set_loading_text(const char * text);
+
+/**
+ * @brief 设置显示类型
+ * 
+ * @param type 
+ */
+void display(display_type_t type);
 
 #endif

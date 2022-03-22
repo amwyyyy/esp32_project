@@ -4,17 +4,24 @@
 #include "freertos/semphr.h"
 #include "freertos/portmacro.h"
 #include "lvgl_helpers.h"
+#include "gui.h"
 
 #include "sntp_time.h"
-#include "assets/1.c"
-#include "assets/2.c"
-#include "assets/3.c"
-#include "assets/4.c"
-#include "assets/5.c"
-#include "assets/6.c"
-#include "assets/7.c"
-#include "assets/8.c"
-#include "assets/9.c"
+#include "assets/taikongren01.c"
+#include "assets/taikongren02.c"
+#include "assets/taikongren03.c"
+#include "assets/taikongren04.c"
+#include "assets/taikongren05.c"
+#include "assets/taikongren06.c"
+#include "assets/taikongren07.c"
+#include "assets/taikongren08.c"
+#include "assets/taikongren09.c"
+#include "assets/taikongren10.c"
+#include "assets/taikongren11.c"
+#include "assets/taikongren12.c"
+#include "assets/taikongren13.c"
+#include "assets/taikongren14.c"
+#include "assets/taikongren15.c"
 
 /* Littlevgl specific */
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -32,15 +39,21 @@
 LV_FONT_DECLARE(dig);
 #include "lv_font/lv_font.h"
 
-LV_IMG_DECLARE(tkr1)
-LV_IMG_DECLARE(tkr2)
-LV_IMG_DECLARE(tkr3)
-LV_IMG_DECLARE(tkr4)
-LV_IMG_DECLARE(tkr5)
-LV_IMG_DECLARE(tkr6)
-LV_IMG_DECLARE(tkr7)
-LV_IMG_DECLARE(tkr8)
-LV_IMG_DECLARE(tkr9)
+LV_IMG_DECLARE(taikongren01)
+LV_IMG_DECLARE(taikongren02)
+LV_IMG_DECLARE(taikongren03)
+LV_IMG_DECLARE(taikongren04)
+LV_IMG_DECLARE(taikongren05)
+LV_IMG_DECLARE(taikongren06)
+LV_IMG_DECLARE(taikongren07)
+LV_IMG_DECLARE(taikongren08)
+LV_IMG_DECLARE(taikongren09)
+LV_IMG_DECLARE(taikongren10)
+LV_IMG_DECLARE(taikongren11)
+LV_IMG_DECLARE(taikongren12)
+LV_IMG_DECLARE(taikongren13)
+LV_IMG_DECLARE(taikongren14)
+LV_IMG_DECLARE(taikongren15)
 
 /**********************
  *  STATIC PROTOTYPES
@@ -48,95 +61,115 @@ LV_IMG_DECLARE(tkr9)
 static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
 
+static lv_obj_t * scene_bg;
+static lv_obj_t * time_label;
+static uint32_t in = 0;
+static lv_obj_t * img1;
+
 void gui_init(void) {
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
      * Otherwise there can be problem such as memory corruption and so on.
      * NOTE: When not using Wi-Fi nor Bluetooth you can pin the guiTask to core 0 */
-    xTaskCreatePinnedToCore(guiTask, "gui", 1024 * 8, NULL, 0, NULL, 1);
+    xTaskCreatePinnedToCore(guiTask, "gui", 2048 * 4, NULL, 0, NULL, 1);
 }
-
-static lv_obj_t * scene_bg;
 
 void clock_task(lv_task_t * task) {
-    lv_obj_clean(scene_bg);
-
-    static lv_style_t label_style;
-    lv_style_init(&label_style);	
-    lv_style_set_text_font(&label_style, LV_STATE_DEFAULT, &dig);
-	lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_RED);
-
-    lv_obj_t * label = lv_label_create(scene_bg, NULL);
-    lv_label_set_long_mode(label, LV_LABEL_LONG_EXPAND);
-    lv_obj_align(label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, -30);
-    lv_obj_add_style(label, LV_LABEL_PART_MAIN, &label_style);
-
     date_time_t dt = get_now_time();
-    lv_label_set_text_fmt(label, "%02d:%02d:%02d", 
-        dt.hour, dt.minute, dt.second);  
-
-    // lv_obj_t * label = lv_label_create(obj1, NULL);
-    // // lv_label_set_recolor(label, true);
-    // lv_label_set_long_mode(label, LV_LABEL_LONG_EXPAND);
-    // lv_obj_align(label, NULL, LV_ALIGN_CENTER, -40, 0);
-    // lv_obj_add_style(label, LV_LABEL_PART_MAIN, &bg_style);
+    lv_label_set_text_fmt(time_label, "%02d:%02d:%02d", 
+        dt.hour, dt.minute, dt.second);
 }
 
-static uint32_t in = 0;
-static lv_obj_t * img1;
 void img_task(lv_task_t * task) {
     switch (in++)
     {
-    case 0:lv_img_set_src(img1, &tkr1);break;
-    case 1:lv_img_set_src(img1, &tkr2);break;
-    case 2:lv_img_set_src(img1, &tkr3);break;
-    case 3:lv_img_set_src(img1, &tkr4);break;
-    case 4:lv_img_set_src(img1, &tkr5);break;
-    case 5:lv_img_set_src(img1, &tkr6);break;
-    case 6:lv_img_set_src(img1, &tkr7);break;
-    case 7:lv_img_set_src(img1, &tkr8);break;
-    case 8:lv_img_set_src(img1, &tkr9);break;
+    case 0:lv_img_set_src(img1, &taikongren01);break;
+    case 1:lv_img_set_src(img1, &taikongren02);break;
+    case 2:lv_img_set_src(img1, &taikongren03);break;
+    case 3:lv_img_set_src(img1, &taikongren04);break;
+    case 4:lv_img_set_src(img1, &taikongren05);break;
+    case 5:lv_img_set_src(img1, &taikongren06);break;
+    case 6:lv_img_set_src(img1, &taikongren07);break;
+    case 7:lv_img_set_src(img1, &taikongren08);break;
+    case 8:lv_img_set_src(img1, &taikongren09);break;
+    case 9:lv_img_set_src(img1, &taikongren10);break;
+    case 10:lv_img_set_src(img1, &taikongren11);break;
+    case 11:lv_img_set_src(img1, &taikongren12);break;
+    case 12:lv_img_set_src(img1, &taikongren13);break;
+    case 13:lv_img_set_src(img1, &taikongren14);break;
+    case 14:lv_img_set_src(img1, &taikongren15);break;
     default:
         break;
     }
 
-    if (in >= 8) {
+    if (in >= 14) {
         in = 0;
     }
 }
 
-void display() {
+void set_loading_text(const char * text) {
+
+}
+
+void display(display_type_t type) {
     static lv_style_t bg_style;
     lv_style_init(&bg_style);	
     lv_style_set_bg_color(&bg_style, LV_STATE_DEFAULT, LV_COLOR_BLACK);
 
     lv_obj_t * scr = lv_scr_act();
+    lv_obj_clean(scr);
     lv_obj_add_style(scr, LV_OBJ_PART_MAIN, &bg_style);
 
-    lv_obj_t * scene_main = lv_obj_create(scr, NULL);
-    lv_obj_reset_style_list(scene_main, LV_OBJ_PART_MAIN);
-    lv_obj_set_size(scene_main, lv_obj_get_width(scr), lv_obj_get_height(scr));
-    lv_obj_align(scene_main, NULL, LV_ALIGN_CENTER, 0, 0);
+    if (type == DISP_CLOCK) {
+        lv_obj_t * scene_main = lv_obj_create(scr, NULL);
+        lv_obj_reset_style_list(scene_main, LV_OBJ_PART_MAIN);
+        lv_obj_set_size(scene_main, lv_obj_get_width(scr), lv_obj_get_height(scr));
+        lv_obj_align(scene_main, NULL, LV_ALIGN_CENTER, 0, 0);
 
-    // 时间显示
-    scene_bg = lv_obj_create(scene_main, NULL);
-    lv_obj_reset_style_list(scene_bg, LV_OBJ_PART_MAIN);
-    lv_obj_set_size(scene_bg, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
-    lv_obj_align(scene_bg, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+        // 时间显示
+        scene_bg = lv_obj_create(scene_main, NULL);
+        lv_obj_reset_style_list(scene_bg, LV_OBJ_PART_MAIN);
+        lv_obj_set_size(scene_bg, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
+        lv_obj_align(scene_bg, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
 
-    lv_task_t * task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
-    lv_task_ready(task);
+        static lv_style_t label_style;
+        lv_style_init(&label_style);	
+        lv_style_set_text_font(&label_style, LV_STATE_DEFAULT, &dig);
+        lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_RED);
 
-    // 图片显示
-    lv_obj_t * scene_img = lv_obj_create(scene_main, NULL);
-    lv_obj_reset_style_list(scene_img, LV_OBJ_PART_MAIN);
-    lv_obj_set_size(scene_img, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
-    lv_obj_align(scene_img, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+        time_label = lv_label_create(scene_bg, NULL);
+        lv_label_set_long_mode(time_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(time_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 30, -30);
+        lv_obj_add_style(time_label, LV_LABEL_PART_MAIN, &label_style);
 
-    img1 = lv_img_create(scene_main, NULL);
-    lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+        lv_task_t * task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
+        lv_task_ready(task);
 
-    lv_task_t * imgDisp = lv_task_create(img_task, 100, LV_TASK_PRIO_MID, NULL);
-    lv_task_ready(imgDisp);
+        // 图片显示
+        lv_obj_t * scene_img = lv_obj_create(scene_main, NULL);
+        lv_obj_reset_style_list(scene_img, LV_OBJ_PART_MAIN);
+        lv_obj_set_size(scene_img, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
+        lv_obj_align(scene_img, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+
+        img1 = lv_img_create(scene_main, NULL);
+        lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+
+        lv_task_t * imgDisp = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
+        lv_task_ready(imgDisp);
+    } else if (type == DISP_LOADING) {
+        lv_obj_t * preload = lv_spinner_create(scr, NULL);
+        lv_obj_set_size(preload, 100, 150);
+        lv_obj_align(preload, NULL, LV_ALIGN_CENTER, 0, 0);
+
+        static lv_style_t label_style;
+        lv_style_init(&label_style);	
+	    lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+        lv_obj_t * label = lv_label_create(preload, NULL);
+        lv_label_set_long_mode(label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(label, NULL, LV_ALIGN_IN_BOTTOM_MID, -20, 0);
+        lv_obj_add_style(label, LV_LABEL_PART_MAIN, &label_style);
+        lv_label_set_text(label, "loading...");
+    }
 }
 
 /* Creates a semaphore to handle concurrent call to lvgl stuff
@@ -188,7 +221,7 @@ static void guiTask(void *pvParameter) {
     ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &periodic_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(periodic_timer, LV_TICK_PERIOD_MS * 1000));
 
-    display();
+    display(DISP_LOADING);
 
     while (1) {
         /* Delay 1 tick (assumes FreeRTOS tick is 10ms */

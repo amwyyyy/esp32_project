@@ -62,7 +62,8 @@ static void event_handle(void *pvParameter) {
                 sntp_time_init();
             } else if (event_flag == EVENT_SNTP_INIT) {
                 printf("同步 SNTP 时间成功\n");
-                gui_init();
+                // TODO 显示时间
+                display(DISP_CLOCK);
             }
         }
 
@@ -76,6 +77,10 @@ void app_main() {
     storage_init();
 
     pwm_init();
+
+    set_bl_pwm(2);
+
+    gui_init();
 
     set_wifi_info("xiongda", "15999554794");
 
