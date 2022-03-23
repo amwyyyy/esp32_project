@@ -29,7 +29,7 @@ esp_err_t sntp_time_init(void) {
     int s_retry_num = 0;
 
     do {
-        if (s_retry_num >= 10) {
+        if (s_retry_num++ >= 20) {
             uint32_t event_flag = EVENT_SINT_FAILURE;
             xQueueSend(basic_evt_queue, &event_flag, NULL);
 

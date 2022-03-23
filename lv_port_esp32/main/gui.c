@@ -33,11 +33,21 @@
 #define TAG "gui"
 #define LV_TICK_PERIOD_MS 1
 
+#include "lv_font/lv_font.h"
 // #include "font/myfont_3500hz_18.c"
 // LV_FONT_DECLARE(myfont_3500hz_18);
-#include "font/dig.c"
-LV_FONT_DECLARE(dig);
-#include "lv_font/lv_font.h"
+
+#include "font/yellow_candy_80.c"
+LV_FONT_DECLARE(yellow_candy_80);
+
+#include "font/yellow_candy_40.c"
+LV_FONT_DECLARE(yellow_candy_40);
+
+#include "font/dig_60.c"
+LV_FONT_DECLARE(dig_60);
+
+#include "font/dig_30.c"
+LV_FONT_DECLARE(dig_30);
 
 LV_IMG_DECLARE(taikongren01)
 LV_IMG_DECLARE(taikongren02)
@@ -62,7 +72,9 @@ static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
 
 static lv_obj_t * scene_bg;
-static lv_obj_t * time_label;
+static lv_obj_t * hour_label;
+static lv_obj_t * minute_label;
+static lv_obj_t * second_label;
 static uint32_t in = 0;
 static lv_obj_t * img1;
 static lv_obj_t * loading_label;
@@ -76,8 +88,9 @@ void gui_init(void) {
 
 void clock_task(lv_task_t * task) {
     date_time_t dt = get_now_time();
-    lv_label_set_text_fmt(time_label, "%02d:%02d:%02d", 
-        dt.hour, dt.minute, dt.second);
+    lv_label_set_text_fmt(hour_label, "%02d", dt.hour);
+    lv_label_set_text_fmt(minute_label, "%02d", dt.minute);
+    lv_label_set_text_fmt(second_label, "%02d", dt.second);
 }
 
 void img_task(lv_task_t * task) {
@@ -130,17 +143,37 @@ void display(display_type_t type) {
         scene_bg = lv_obj_create(scene_main, NULL);
         lv_obj_reset_style_list(scene_bg, LV_OBJ_PART_MAIN);
         lv_obj_set_size(scene_bg, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
-        lv_obj_align(scene_bg, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
+        lv_obj_align(scene_bg, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
 
-        static lv_style_t label_style;
-        lv_style_init(&label_style);	
-        lv_style_set_text_font(&label_style, LV_STATE_DEFAULT, &dig);
-        lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_RED);
+        static lv_style_t hour_style;
+        lv_style_init(&hour_style);	
+        lv_style_set_text_font(&hour_style, LV_STATE_DEFAULT, &dig_60);
+        lv_style_set_text_color(&hour_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
-        time_label = lv_label_create(scene_bg, NULL);
-        lv_label_set_long_mode(time_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(time_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 30, -30);
-        lv_obj_add_style(time_label, LV_LABEL_PART_MAIN, &label_style);
+        hour_label = lv_label_create(scene_bg, NULL);
+        lv_label_set_long_mode(hour_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(hour_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 5, -50);
+        lv_obj_add_style(hour_label, LV_LABEL_PART_MAIN, &hour_style);
+
+        static lv_style_t minute_style;
+        lv_style_init(&minute_style);	
+        lv_style_set_text_font(&minute_style, LV_STATE_DEFAULT, &dig_60);
+        lv_style_set_text_color(&minute_style, LV_STATE_DEFAULT, LV_COLOR_ORANGE);
+
+        minute_label = lv_label_create(scene_bg, NULL);
+        lv_label_set_long_mode(minute_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 87, -50);
+        lv_obj_add_style(minute_label, LV_LABEL_PART_MAIN, &minute_style);
+
+        static lv_style_t second_style;
+        lv_style_init(&second_style);	
+        lv_style_set_text_font(&second_style, LV_STATE_DEFAULT, &dig_30);
+        lv_style_set_text_color(&second_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+        second_label = lv_label_create(scene_bg, NULL);
+        lv_label_set_long_mode(second_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(second_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 187, -29);
+        lv_obj_add_style(second_label, LV_LABEL_PART_MAIN, &second_style);
 
         lv_task_t * task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(task);
@@ -149,10 +182,10 @@ void display(display_type_t type) {
         lv_obj_t * scene_img = lv_obj_create(scene_main, NULL);
         lv_obj_reset_style_list(scene_img, LV_OBJ_PART_MAIN);
         lv_obj_set_size(scene_img, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
-        lv_obj_align(scene_img, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+        lv_obj_align(scene_img, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
 
-        img1 = lv_img_create(scene_main, NULL);
-        lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
+        img1 = lv_img_create(scene_img, NULL);
+        lv_obj_align(img1, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 0, -34);
 
         lv_task_t * imgDisp = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(imgDisp);
