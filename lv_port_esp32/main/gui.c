@@ -65,6 +65,7 @@ static lv_obj_t * scene_bg;
 static lv_obj_t * time_label;
 static uint32_t in = 0;
 static lv_obj_t * img1;
+static lv_obj_t * loading_label;
 
 void gui_init(void) {
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
@@ -107,7 +108,7 @@ void img_task(lv_task_t * task) {
 }
 
 void set_loading_text(const char * text) {
-
+    lv_label_set_text(loading_label, text);
 }
 
 void display(display_type_t type) {
@@ -151,7 +152,7 @@ void display(display_type_t type) {
         lv_obj_align(scene_img, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
 
         img1 = lv_img_create(scene_main, NULL);
-        lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
+        lv_obj_align(img1, NULL, LV_ALIGN_IN_TOP_LEFT, 0, 0);
 
         lv_task_t * imgDisp = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(imgDisp);
@@ -162,13 +163,14 @@ void display(display_type_t type) {
 
         static lv_style_t label_style;
         lv_style_init(&label_style);	
-	    lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+        lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
-        lv_obj_t * label = lv_label_create(preload, NULL);
-        lv_label_set_long_mode(label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(label, NULL, LV_ALIGN_IN_BOTTOM_MID, -20, 0);
-        lv_obj_add_style(label, LV_LABEL_PART_MAIN, &label_style);
-        lv_label_set_text(label, "loading...");
+        loading_label = lv_label_create(preload, NULL);
+        lv_label_set_long_mode(loading_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(loading_label, NULL, LV_ALIGN_IN_BOTTOM_MID, -20, 0);
+        lv_obj_add_style(loading_label, LV_LABEL_PART_MAIN, &label_style);
+        
+        set_loading_text("Loading...");
     }
 }
 

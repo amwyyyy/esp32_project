@@ -58,12 +58,27 @@ static void event_handle(void *pvParameter) {
     while (1) {
         if (xQueueReceive(basic_evt_queue, &event_flag, portMAX_DELAY)) {
             if (event_flag == EVENT_WIFI_STA_CONNECTED) {
-                printf("连接 wifi 成功!!!\n");
+                set_loading_text("Sntp init...");
                 sntp_time_init();
             } else if (event_flag == EVENT_SNTP_INIT) {
-                printf("同步 SNTP 时间成功\n");
-                // TODO 显示时间
+                set_loading_text("Success!");
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+
                 display(DISP_CLOCK);
+            } else if (event_flag == EVENT_WIFI_STA_START) {
+                set_loading_text("Wifi init...");
+            } else if (event_flag == EVENT_WIFI_STA_DISCONNECTED) {
+                set_loading_text("Wifi error...");
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                ESP_LOGI(TAG, "Wifi connect error restart.");
+                esp_restart();
+            } else if (event_flag == EVENT_SINT_FAILURE) {
+                set_loading_text("Sntp error...");
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                ESP_LOGI(TAG, "Sntp sync error restart.");
+                esp_restart();
             }
         }
 
@@ -78,11 +93,9 @@ void app_main() {
 
     pwm_init();
 
-    set_bl_pwm(2);
-
     gui_init();
 
-    set_wifi_info("xiongda", "15999554794");
+    // set_wifi_info("xiongda", "15999554794");
 
     connect_wifi();
 

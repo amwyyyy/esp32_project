@@ -30,6 +30,9 @@ esp_err_t sntp_time_init(void) {
 
     do {
         if (s_retry_num >= 10) {
+            uint32_t event_flag = EVENT_SINT_FAILURE;
+            xQueueSend(basic_evt_queue, &event_flag, NULL);
+
             return ESP_ERR_TIMEOUT;
         }
         time(&now);

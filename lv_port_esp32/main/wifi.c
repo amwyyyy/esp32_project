@@ -32,6 +32,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     static int s_retry_num = 0;
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        /*
+         *   发送连接开始
+         */
+        wifi_sta_flag = EVENT_WIFI_STA_START;
+        xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
+
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         if (s_retry_num < 5) {
