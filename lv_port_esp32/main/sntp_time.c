@@ -48,6 +48,19 @@ esp_err_t sntp_time_init(void) {
     return ESP_OK;
 }
 
+char * get_week_text(int week) {
+    switch (week) {
+    case 0:return "周日";break;
+    case 1:return "周一";break;
+    case 2:return "周二";break;
+    case 3:return "周三";break;
+    case 4:return "周四";break;
+    case 5:return "周五";break;
+    case 6:return "周六";break;
+    default:return "";break;
+    }
+}
+
 date_time_t get_now_time(void) {
     time_t now = 0;
     struct tm timeinfo = {0};
@@ -62,6 +75,7 @@ date_time_t get_now_time(void) {
     dt.hour   = timeinfo.tm_hour;
     dt.minute = timeinfo.tm_min;
     dt.second = timeinfo.tm_sec;
+    dt.week   = timeinfo.tm_wday;
 
     ESP_LOGD(TAG, "current time: %d-%d-%d %d:%d:%d",
 			 dt.year, dt.month,

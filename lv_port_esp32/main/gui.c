@@ -5,8 +5,8 @@
 #include "freertos/portmacro.h"
 #include "lvgl_helpers.h"
 #include "gui.h"
-
 #include "sntp_time.h"
+
 #include "assets/taikongren01.c"
 #include "assets/taikongren02.c"
 #include "assets/taikongren03.c"
@@ -34,20 +34,16 @@
 #define LV_TICK_PERIOD_MS 1
 
 #include "lv_font/lv_font.h"
-// #include "font/myfont_3500hz_18.c"
-// LV_FONT_DECLARE(myfont_3500hz_18);
+LV_FONT_DECLARE(lv_font_montserrat_22);
 
-#include "font/yellow_candy_80.c"
-LV_FONT_DECLARE(yellow_candy_80);
+#include "font/ht_22.c"
+LV_FONT_DECLARE(ht_22);
 
-#include "font/yellow_candy_40.c"
-LV_FONT_DECLARE(yellow_candy_40);
+#include "font/mkb_30.c"
+LV_FONT_DECLARE(mkb_30);
 
-#include "font/dig_60.c"
-LV_FONT_DECLARE(dig_60);
-
-#include "font/dig_30.c"
-LV_FONT_DECLARE(dig_30);
+#include "font/mkb_60.c"
+LV_FONT_DECLARE(mkb_60);
 
 LV_IMG_DECLARE(taikongren01)
 LV_IMG_DECLARE(taikongren02)
@@ -71,13 +67,15 @@ LV_IMG_DECLARE(taikongren15)
 static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
 
-static lv_obj_t * scene_bg;
 static lv_obj_t * hour_label;
 static lv_obj_t * minute_label;
 static lv_obj_t * second_label;
-static uint32_t in = 0;
+static lv_obj_t * date_label;
+static lv_obj_t * week_label;
 static lv_obj_t * img1;
 static lv_obj_t * loading_label;
+
+static uint32_t in = 0;
 
 void gui_init(void) {
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
@@ -91,6 +89,8 @@ void clock_task(lv_task_t * task) {
     lv_label_set_text_fmt(hour_label, "%02d", dt.hour);
     lv_label_set_text_fmt(minute_label, "%02d", dt.minute);
     lv_label_set_text_fmt(second_label, "%02d", dt.second);
+    lv_label_set_text_fmt(date_label, "%04d/%02d/%02d", dt.year, dt.month, dt.day);
+    lv_label_set_text(week_label, get_week_text(dt.week));
 }
 
 void img_task(lv_task_t * task) {
@@ -140,51 +140,66 @@ void display(display_type_t type) {
         lv_obj_align(scene_main, NULL, LV_ALIGN_CENTER, 0, 0);
 
         // 时间显示
-        scene_bg = lv_obj_create(scene_main, NULL);
-        lv_obj_reset_style_list(scene_bg, LV_OBJ_PART_MAIN);
-        lv_obj_set_size(scene_bg, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
-        lv_obj_align(scene_bg, NULL, LV_ALIGN_IN_TOP_MID, 0, 0);
-
+        // 小时
         static lv_style_t hour_style;
         lv_style_init(&hour_style);	
-        lv_style_set_text_font(&hour_style, LV_STATE_DEFAULT, &dig_60);
+        lv_style_set_text_font(&hour_style, LV_STATE_DEFAULT, &mkb_60);
         lv_style_set_text_color(&hour_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
-        hour_label = lv_label_create(scene_bg, NULL);
+        hour_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(hour_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(hour_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 5, -50);
+        lv_obj_align(hour_label, NULL, LV_ALIGN_IN_LEFT_MID, 20, -20);
         lv_obj_add_style(hour_label, LV_LABEL_PART_MAIN, &hour_style);
 
+        // 分钟
         static lv_style_t minute_style;
         lv_style_init(&minute_style);	
-        lv_style_set_text_font(&minute_style, LV_STATE_DEFAULT, &dig_60);
+        lv_style_set_text_font(&minute_style, LV_STATE_DEFAULT, &mkb_60);
         lv_style_set_text_color(&minute_style, LV_STATE_DEFAULT, LV_COLOR_ORANGE);
 
-        minute_label = lv_label_create(scene_bg, NULL);
+        minute_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(minute_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 90, -50);
+        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_LEFT_MID, 98, -20);
         lv_obj_add_style(minute_label, LV_LABEL_PART_MAIN, &minute_style);
 
+        // 秒
         static lv_style_t second_style;
         lv_style_init(&second_style);	
-        lv_style_set_text_font(&second_style, LV_STATE_DEFAULT, &dig_30);
+        lv_style_set_text_font(&second_style, LV_STATE_DEFAULT, &mkb_30);
         lv_style_set_text_color(&second_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
-        second_label = lv_label_create(scene_bg, NULL);
+        second_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(second_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(second_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 188, -29);
+        lv_obj_align(second_label, NULL, LV_ALIGN_IN_LEFT_MID, 180, 0);
         lv_obj_add_style(second_label, LV_LABEL_PART_MAIN, &second_style);
+
+        // 日期
+        static lv_style_t date_style;
+        lv_style_init(&date_style);	
+        lv_style_set_text_font(&date_style, LV_STATE_DEFAULT, &lv_font_montserrat_22);
+        lv_style_set_text_color(&date_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+        date_label = lv_label_create(scene_main, NULL);
+        lv_label_set_long_mode(date_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(date_label, NULL, LV_ALIGN_IN_LEFT_MID, 25, 40);
+        lv_obj_add_style(date_label, LV_LABEL_PART_MAIN, &date_style);
+
+        // 星期
+        static lv_style_t week_style;
+        lv_style_init(&week_style);	
+        lv_style_set_text_font(&week_style, LV_STATE_DEFAULT, &ht_22);
+        lv_style_set_text_color(&week_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+        week_label = lv_label_create(scene_main, NULL);
+        lv_label_set_long_mode(week_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(week_label, NULL, LV_ALIGN_IN_LEFT_MID, 150, 40);
+        lv_obj_add_style(week_label, LV_LABEL_PART_MAIN, &week_style);
 
         lv_task_t * task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(task);
 
         // 图片显示
-        lv_obj_t * scene_img = lv_obj_create(scene_main, NULL);
-        lv_obj_reset_style_list(scene_img, LV_OBJ_PART_MAIN);
-        lv_obj_set_size(scene_img, lv_obj_get_width(scr), lv_obj_get_height(scr) / 2);
-        lv_obj_align(scene_img, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
-
-        img1 = lv_img_create(scene_img, NULL);
+        img1 = lv_img_create(scene_main, NULL);
         lv_obj_align(img1, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 18, -24);
 
         lv_task_t * imgDisp = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
