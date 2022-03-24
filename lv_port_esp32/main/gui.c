@@ -162,7 +162,7 @@ void display(display_type_t type) {
 
         minute_label = lv_label_create(scene_bg, NULL);
         lv_label_set_long_mode(minute_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 87, -50);
+        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 90, -50);
         lv_obj_add_style(minute_label, LV_LABEL_PART_MAIN, &minute_style);
 
         static lv_style_t second_style;
@@ -172,7 +172,7 @@ void display(display_type_t type) {
 
         second_label = lv_label_create(scene_bg, NULL);
         lv_label_set_long_mode(second_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(second_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 187, -29);
+        lv_obj_align(second_label, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 188, -29);
         lv_obj_add_style(second_label, LV_LABEL_PART_MAIN, &second_style);
 
         lv_task_t * task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
@@ -185,7 +185,7 @@ void display(display_type_t type) {
         lv_obj_align(scene_img, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
 
         img1 = lv_img_create(scene_img, NULL);
-        lv_obj_align(img1, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 0, -34);
+        lv_obj_align(img1, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 18, -24);
 
         lv_task_t * imgDisp = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(imgDisp);
