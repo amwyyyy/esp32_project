@@ -4,8 +4,10 @@
 #include "freertos/semphr.h"
 #include "freertos/portmacro.h"
 #include "lvgl_helpers.h"
+#include "esp_log.h"
 #include "gui.h"
 #include "sntp_time.h"
+#include "weather.h"
 
 #include "assets/taikongren01.c"
 #include "assets/taikongren02.c"
@@ -22,6 +24,8 @@
 #include "assets/taikongren13.c"
 #include "assets/taikongren14.c"
 #include "assets/taikongren15.c"
+#include "assets/temperature.c"
+#include "assets/humidity.c"
 
 /* Littlevgl specific */
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE
@@ -36,8 +40,8 @@
 #include "lv_font/lv_font.h"
 LV_FONT_DECLARE(lv_font_montserrat_22);
 
-#include "font/ht_22.c"
-LV_FONT_DECLARE(ht_22);
+#include "font/fz_20.c"
+LV_FONT_DECLARE(fz_20);
 
 #include "font/mkb_30.c"
 LV_FONT_DECLARE(mkb_30);
@@ -45,6 +49,8 @@ LV_FONT_DECLARE(mkb_30);
 #include "font/mkb_60.c"
 LV_FONT_DECLARE(mkb_60);
 
+LV_IMG_DECLARE(temperature);
+LV_IMG_DECLARE(humidity);
 LV_IMG_DECLARE(taikongren01)
 LV_IMG_DECLARE(taikongren02)
 LV_IMG_DECLARE(taikongren03)
@@ -71,11 +77,15 @@ static lv_obj_t * hour_label;
 static lv_obj_t * minute_label;
 static lv_obj_t * second_label;
 static lv_obj_t * date_label;
-static lv_obj_t * week_label;
-static lv_obj_t * img1;
+static lv_obj_t * temperature_label;
+static lv_obj_t * humidity_label;
+static lv_obj_t * temperature_bar;
+static lv_obj_t * humidity_bar;
+static lv_obj_t * img_gif;
 static lv_obj_t * loading_label;
 
 static uint32_t in = 0;
+static weather_t weather;
 
 void gui_init(void) {
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
@@ -89,28 +99,40 @@ void clock_task(lv_task_t * task) {
     lv_label_set_text_fmt(hour_label, "%02d", dt.hour);
     lv_label_set_text_fmt(minute_label, "%02d", dt.minute);
     lv_label_set_text_fmt(second_label, "%02d", dt.second);
-    lv_label_set_text_fmt(date_label, "%04d/%02d/%02d", dt.year, dt.month, dt.day);
-    lv_label_set_text(week_label, get_week_text(dt.week));
+    lv_label_set_text_fmt(date_label, "%02d月%02d日  %s", dt.month, dt.day, get_week_text(dt.week));
+}
+
+void wea_task(lv_task_t * task) {
+    if (weather.weather != NULL) {
+        // 计算温度比例，按 50℃ 为 100%
+        int temp = strtol(weather.temp, NULL, 10);
+        int t = temp * 100 / 50;
+
+        lv_bar_set_value(temperature_bar, t, LV_ANIM_OFF);
+        lv_bar_set_value(humidity_bar, strtol(weather.sd, NULL, 10), LV_ANIM_OFF);
+        lv_label_set_text_fmt(temperature_label, "%s℃",  weather.temp);
+        lv_label_set_text_fmt(humidity_label, "%s%",  weather.sd);
+    }
 }
 
 void img_task(lv_task_t * task) {
     switch (in++)
     {
-    case 0:lv_img_set_src(img1, &taikongren01);break;
-    case 1:lv_img_set_src(img1, &taikongren02);break;
-    case 2:lv_img_set_src(img1, &taikongren03);break;
-    case 3:lv_img_set_src(img1, &taikongren04);break;
-    case 4:lv_img_set_src(img1, &taikongren05);break;
-    case 5:lv_img_set_src(img1, &taikongren06);break;
-    case 6:lv_img_set_src(img1, &taikongren07);break;
-    case 7:lv_img_set_src(img1, &taikongren08);break;
-    case 8:lv_img_set_src(img1, &taikongren09);break;
-    case 9:lv_img_set_src(img1, &taikongren10);break;
-    case 10:lv_img_set_src(img1, &taikongren11);break;
-    case 11:lv_img_set_src(img1, &taikongren12);break;
-    case 12:lv_img_set_src(img1, &taikongren13);break;
-    case 13:lv_img_set_src(img1, &taikongren14);break;
-    case 14:lv_img_set_src(img1, &taikongren15);break;
+    case 0:lv_img_set_src(img_gif, &taikongren01);break;
+    case 1:lv_img_set_src(img_gif, &taikongren02);break;
+    case 2:lv_img_set_src(img_gif, &taikongren03);break;
+    case 3:lv_img_set_src(img_gif, &taikongren04);break;
+    case 4:lv_img_set_src(img_gif, &taikongren05);break;
+    case 5:lv_img_set_src(img_gif, &taikongren06);break;
+    case 6:lv_img_set_src(img_gif, &taikongren07);break;
+    case 7:lv_img_set_src(img_gif, &taikongren08);break;
+    case 8:lv_img_set_src(img_gif, &taikongren09);break;
+    case 9:lv_img_set_src(img_gif, &taikongren10);break;
+    case 10:lv_img_set_src(img_gif, &taikongren11);break;
+    case 11:lv_img_set_src(img_gif, &taikongren12);break;
+    case 12:lv_img_set_src(img_gif, &taikongren13);break;
+    case 13:lv_img_set_src(img_gif, &taikongren14);break;
+    case 14:lv_img_set_src(img_gif, &taikongren15);break;
     default:
         break;
     }
@@ -122,6 +144,10 @@ void img_task(lv_task_t * task) {
 
 void set_loading_text(const char * text) {
     lv_label_set_text(loading_label, text);
+}
+
+void set_weather_info(weather_t wea) {
+    weather = wea;
 }
 
 void display(display_type_t type) {
@@ -148,7 +174,7 @@ void display(display_type_t type) {
 
         hour_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(hour_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(hour_label, NULL, LV_ALIGN_IN_LEFT_MID, 20, -20);
+        lv_obj_align(hour_label, NULL, LV_ALIGN_IN_LEFT_MID, 20, -35);
         lv_obj_add_style(hour_label, LV_LABEL_PART_MAIN, &hour_style);
 
         // 分钟
@@ -159,7 +185,7 @@ void display(display_type_t type) {
 
         minute_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(minute_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_LEFT_MID, 98, -20);
+        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_LEFT_MID, 98, -35);
         lv_obj_add_style(minute_label, LV_LABEL_PART_MAIN, &minute_style);
 
         // 秒
@@ -170,52 +196,77 @@ void display(display_type_t type) {
 
         second_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(second_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(second_label, NULL, LV_ALIGN_IN_LEFT_MID, 180, 0);
+        lv_obj_align(second_label, NULL, LV_ALIGN_IN_LEFT_MID, 180, -15);
         lv_obj_add_style(second_label, LV_LABEL_PART_MAIN, &second_style);
 
         // 日期
-        static lv_style_t date_style;
-        lv_style_init(&date_style);	
-        lv_style_set_text_font(&date_style, LV_STATE_DEFAULT, &lv_font_montserrat_22);
-        lv_style_set_text_color(&date_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+        static lv_style_t fz_20_style;
+        lv_style_init(&fz_20_style);	
+        lv_style_set_text_font(&fz_20_style, LV_STATE_DEFAULT, &fz_20);
+        lv_style_set_text_color(&fz_20_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
         date_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(date_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(date_label, NULL, LV_ALIGN_IN_LEFT_MID, 25, 40);
-        lv_obj_add_style(date_label, LV_LABEL_PART_MAIN, &date_style);
+        lv_obj_align(date_label, NULL, LV_ALIGN_IN_LEFT_MID, 10, 30);
+        lv_obj_add_style(date_label, LV_LABEL_PART_MAIN, &fz_20_style);
 
-        // 星期
-        static lv_style_t week_style;
-        lv_style_init(&week_style);	
-        lv_style_set_text_font(&week_style, LV_STATE_DEFAULT, &ht_22);
-        lv_style_set_text_color(&week_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+        // 太空人动画
+        img_gif = lv_img_create(scene_main, NULL);
+        lv_obj_align(img_gif, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 18, -24);
 
-        week_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(week_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(week_label, NULL, LV_ALIGN_IN_LEFT_MID, 150, 40);
-        lv_obj_add_style(week_label, LV_LABEL_PART_MAIN, &week_style);
+        // 温度图标
+        lv_obj_t * temperature_img = lv_img_create(scene_main, NULL);
+        lv_obj_align(temperature_img, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 15, -25);
+        lv_img_set_src(temperature_img, &temperature);
 
-        lv_task_t * task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
-        lv_task_ready(task);
+        // 湿度图标
+        lv_obj_t * humidity_img = lv_img_create(scene_main, NULL);
+        lv_obj_align(humidity_img, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 15, 10);
+        lv_img_set_src(humidity_img, &humidity);
 
-        // 图片显示
-        img1 = lv_img_create(scene_main, NULL);
-        lv_obj_align(img1, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 18, -24);
+        // 温度条
+        temperature_bar = lv_bar_create(scene_main, NULL);
+        lv_obj_set_size(temperature_bar, 70, 6);
+        lv_obj_align(temperature_bar, NULL, LV_ALIGN_IN_BOTTOM_MID, -25, -47);
 
-        lv_task_t * imgDisp = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
-        lv_task_ready(imgDisp);
+        // 湿度条
+        humidity_bar = lv_bar_create(scene_main, NULL);
+        lv_obj_set_size(humidity_bar, 70, 6);
+        lv_obj_align(humidity_bar, NULL, LV_ALIGN_IN_BOTTOM_MID, -25, -17);
+
+        // 温度
+        temperature_label = lv_label_create(scene_main, NULL);
+        lv_label_set_long_mode(temperature_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(temperature_label, NULL, LV_ALIGN_IN_BOTTOM_MID, 35, -40);
+        lv_obj_add_style(temperature_label, LV_LABEL_PART_MAIN, &fz_20_style);
+
+        // 湿度
+        humidity_label = lv_label_create(scene_main, NULL);
+        lv_label_set_long_mode(humidity_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(humidity_label, NULL, LV_ALIGN_IN_BOTTOM_MID, 35, -10);
+        lv_obj_add_style(humidity_label, LV_LABEL_PART_MAIN, &fz_20_style);
+
+        // 刷新任务
+        lv_task_t * time_task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
+        lv_task_ready(time_task);
+
+        lv_task_t * gif_task = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
+        lv_task_ready(gif_task);
+
+        lv_task_t * weather_task = lv_task_create(wea_task, 1000 * 60 * 1, LV_TASK_PRIO_MID, NULL);
+        lv_task_ready(weather_task);
     } else if (type == DISP_LOADING) {
         lv_obj_t * preload = lv_spinner_create(scr, NULL);
-        lv_obj_set_size(preload, 100, 150);
+        lv_obj_set_size(preload, 100, 100);
         lv_obj_align(preload, NULL, LV_ALIGN_CENTER, 0, 0);
 
         static lv_style_t label_style;
         lv_style_init(&label_style);	
         lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
-        loading_label = lv_label_create(preload, NULL);
+        loading_label = lv_label_create(scr, NULL);
         lv_label_set_long_mode(loading_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(loading_label, NULL, LV_ALIGN_IN_BOTTOM_MID, -20, 0);
+        lv_obj_align(loading_label, NULL, LV_ALIGN_IN_BOTTOM_MID, -30, -30);
         lv_obj_add_style(loading_label, LV_LABEL_PART_MAIN, &label_style);
         
         set_loading_text("Loading...");

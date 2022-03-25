@@ -40,7 +40,7 @@ esp_err_t sntp_time_init(void) {
         vTaskDelay(500 / portTICK_PERIOD_MS);
     } while (timeinfo.tm_year < 100);
 
-    ESP_LOGI(TAG, "Finish SNTP");
+    ESP_LOGI(TAG, "Finish SNTP init.");
 
     uint32_t event_flag = EVENT_SNTP_INIT;
     xQueueSend(basic_evt_queue, &event_flag, NULL);

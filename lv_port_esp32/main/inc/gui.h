@@ -1,6 +1,8 @@
 #ifndef _gui_h_
 #define _gui_h_
 
+#include "weather.h"
+
 typedef enum {
     DISP_LOADING = 0,
     DISP_CLOCK,
@@ -19,6 +21,13 @@ void gui_init(void);
  * @param text 
  */
 void set_loading_text(const char * text);
+
+/**
+ * @brief 设置天气信息
+ * 
+ * @param wea 
+ */
+void set_weather_info(weather_t wea);
 
 /**
  * @brief 设置显示类型

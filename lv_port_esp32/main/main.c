@@ -37,6 +37,7 @@
 xQueueHandle basic_evt_queue;
 
 static void event_handle(void *pvParameter);
+static void update_data_task(void *pvParameter);
 
 /**
  * @brief 开机自动连接wifi
@@ -52,6 +53,19 @@ void connect_wifi() {
     }
 }
 
+/**
+ * @brief 定时更新数据
+ * 
+ * @param pvParameter 
+ */
+static void update_data_task(void *pvParameter) {
+    while (1) {
+        vTaskDelay(1000 * 60 * 60 / portTICK_PERIOD_MS);
+        weather_t wea = weather_init();
+        set_weather_info(wea);
+    }
+}
+
 static void event_handle(void *pvParameter) {
     uint32_t event_flag;
 
@@ -60,11 +74,19 @@ static void event_handle(void *pvParameter) {
             if (event_flag == EVENT_WIFI_STA_CONNECTED) {
                 set_loading_text("Sntp init...");
                 sntp_time_init();
+
+                set_loading_text("Weather init...");
+                weather_t wea = weather_init();
+                set_weather_info(wea);
             } else if (event_flag == EVENT_SNTP_INIT) {
                 set_loading_text("Success!");
                 vTaskDelay(500 / portTICK_PERIOD_MS);
 
+                // 显示天气时间界面
                 display(DISP_CLOCK);
+
+                // 启动更新数据任务
+                xTaskCreate(update_data_task, "update", 1024 * 8, NULL, 1, NULL);
             } else if (event_flag == EVENT_WIFI_STA_START) {
                 set_loading_text("Wifi init...");
             } else if (event_flag == EVENT_WIFI_STA_DISCONNECTED) {
@@ -93,13 +115,15 @@ void app_main() {
 
     pwm_init();
 
+    set_bl_pwm(1);
+
     gui_init();
 
     // set_wifi_info("xiongda", "15999554794");
 
     connect_wifi();
 
-    xTaskCreate(event_handle, "event", 1024 * 2, NULL, 1, NULL);
+    xTaskCreate(event_handle, "event", 1024 * 8, NULL, 1, NULL);
 
     ESP_LOGI(TAG, "[APP] Free internal memory: %d kb", esp_get_free_internal_heap_size() / 1024);
     ESP_LOGI(TAG, "[APP] Free all memory: %d kb", esp_get_free_heap_size() / 1024);

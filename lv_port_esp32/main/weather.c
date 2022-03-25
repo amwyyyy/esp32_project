@@ -90,26 +90,39 @@ weather_t weather_init(void) {
         .disable_auto_redirect = true,
     };
 
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    esp_http_client_set_header(client, "Referer", "http://www.weather.com.cn/");
+    weather_t wea;
 
-    esp_err_t err = esp_http_client_perform(client);
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %d",
-                esp_http_client_get_status_code(client),
-                esp_http_client_get_content_length(client));
-    } else {
-        ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+    int s_retry_num = 0;
+    while (1) {
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+        esp_http_client_set_header(client, "Referer", "http://www.weather.com.cn/");
+
+        esp_err_t err = esp_http_client_perform(client);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %d",
+                    esp_http_client_get_status_code(client),
+                    esp_http_client_get_content_length(client));
+            break;
+        } else {
+            ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+            s_retry_num++;
+        }
+
+        if (s_retry_num >= 3) {
+            wea.high = "";
+            wea.low = "";
+            wea.weather = "";
+            return wea;
+        }
     }
 
-    ESP_LOGI(TAG, "%s", local_response_buffer);
+    ESP_LOGD(TAG, "%s", local_response_buffer);
 
-    weather_t wea;
     strtok(local_response_buffer, "=");
     char *dz = strtok(NULL, "=");
-    // char *alarm = strtok(NULL, "=");
-    // char *sk = strtok(NULL, "=");
-    // char *zs = strtok(NULL, "=");
+    char *alarm = strtok(NULL, "=");
+    char *sk = strtok(NULL, "=");
+    char *zs = strtok(NULL, "=");
     char *fc = strtok(NULL, "=");
 
     cJSON *dz_json = cJSON_Parse(dz);
@@ -121,6 +134,16 @@ weather_t weather_init(void) {
     cJSON *weather = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weather");
     if (cJSON_IsString(weather) && (weather->valuestring != NULL)) {
         wea.weather = weather->valuestring;
+    }
+
+    cJSON *sk_json = cJSON_Parse(sk);
+    cJSON *sk_temp = cJSON_GetObjectItemCaseSensitive(sk_json, "temp");
+    if (cJSON_IsString(sk_temp) && (sk_temp->valuestring != NULL)) {
+        wea.temp = sk_temp->valuestring;
+    }
+    cJSON *sk_sd = cJSON_GetObjectItemCaseSensitive(sk_json, "SD");
+    if (cJSON_IsString(sk_sd) && (sk_sd->valuestring != NULL)) {
+        wea.sd = sk_sd->valuestring;
     }
 
     cJSON *fc_json = cJSON_Parse(fc);
@@ -135,6 +158,8 @@ weather_t weather_init(void) {
     if (cJSON_IsString(high) && (high->valuestring != NULL)) {
         wea.high = high->valuestring;
     }
-    
+
+    ESP_LOGI(TAG, "init weather success.");
+
     return wea;
 }

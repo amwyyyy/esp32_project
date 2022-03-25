@@ -419,9 +419,9 @@ void init_weather(void *arg) {
 
     strtok(local_response_buffer, "=");
     char *dz = strtok(NULL, "=");
-    // char *alarm = strtok(NULL, "=");
-    // char *sk = strtok(NULL, "=");
-    // char *zs = strtok(NULL, "=");
+    char *alarm = strtok(NULL, "=");
+    char *sk = strtok(NULL, "=");
+    char *zs = strtok(NULL, "=");
     char *fc = strtok(NULL, "=");
 
     cJSON *dz_json = cJSON_Parse(dz);
