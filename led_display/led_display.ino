@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include "LedMatrix.h"
 #include "cp437font.h"
+#include "cp438font.h"
 
 #define NUMBER_OF_DEVICES 4 //串联led矩阵连接数
 #define CS_PIN 5
@@ -81,8 +82,8 @@ void TaskUpdateData(void *pvParameters) {
 
     closeWiFi();
 
-    // 每小时更新一次
-    vTaskDelay(60 * 60 * 1000);
+    // 每3小时更新一次
+    vTaskDelay(60 * 60 * 3000);
   }
 }
 
@@ -100,7 +101,7 @@ void loop() {
   ledMatrix.clear();
 
   initLocalTime();
-  sprintf(lt, "%02d%02d", now.hour, now.minute);
+  sprintf(lt, "%02d", now.hour);
   String text = lt;
   for (int i = 0; i < text.length(); i++) {
     char ch = text.charAt(i);
@@ -108,6 +109,17 @@ void loop() {
     for (int n = 0; n < 8; n++) {
       int pos = n + i * 8;
       ledMatrix.setColumn(pos, pgm_read_byte(&cp437_font [ch] [n]));
+    }
+  }
+
+  sprintf(lt, "%02d", now.minute);
+  text = lt;
+  for (int i = 0; i < text.length(); i++) {
+    char ch = text.charAt(i);
+    
+    for (int n = 0; n < 8; n++) {
+      int pos = 16 + n + i * 8;
+      ledMatrix.setColumn(pos, pgm_read_byte(&cp438_font [ch] [n]));
     }
   }
 
