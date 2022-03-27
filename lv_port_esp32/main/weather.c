@@ -4,6 +4,7 @@
 #include "esp_tls.h"
 #include "esp_log.h"
 #include "cJSON.h"
+#include "lv_misc/lv_color.h"
 #include "weather.h"
 
 static const char *TAG = "weather";
@@ -83,7 +84,7 @@ weather_t weather_init(void) {
     esp_http_client_config_t config = {
         .host = "d1.weather.com.cn",
         .path = "/weather_index/101280601.html",
-        .user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
+        // .user_agent = "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1",
         .method = HTTP_METHOD_GET,
         .event_handler = _http_event_handler,
         .user_data = local_response_buffer,
@@ -135,6 +136,18 @@ weather_t weather_init(void) {
     if (cJSON_IsString(weather) && (weather->valuestring != NULL)) {
         wea.weather = weather->valuestring;
     }
+    cJSON *weathercode = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weathercode");
+    if (cJSON_IsString(weathercode) && (weathercode->valuestring != NULL)) {
+        wea.weathercode = weathercode->valuestring;
+    }
+    cJSON *weathercoden = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weathercoden");
+    if (cJSON_IsString(weathercoden) && (weathercoden->valuestring != NULL)) {
+        wea.weathercoden = weathercoden->valuestring;
+    }
+    cJSON *city = cJSON_GetObjectItemCaseSensitive(weatherinfo, "city");
+    if (cJSON_IsString(city) && (city->valuestring != NULL)) {
+        wea.city = city->valuestring;
+    }
 
     cJSON *sk_json = cJSON_Parse(sk);
     cJSON *sk_temp = cJSON_GetObjectItemCaseSensitive(sk_json, "temp");
@@ -144,6 +157,10 @@ weather_t weather_init(void) {
     cJSON *sk_sd = cJSON_GetObjectItemCaseSensitive(sk_json, "SD");
     if (cJSON_IsString(sk_sd) && (sk_sd->valuestring != NULL)) {
         wea.sd = sk_sd->valuestring;
+    }
+    cJSON *sk_aqi = cJSON_GetObjectItemCaseSensitive(sk_json, "aqi");
+    if (cJSON_IsString(sk_aqi) && (sk_aqi->valuestring != NULL)) {
+        wea.aqi = strtol(sk_aqi->valuestring, NULL, 10);
     }
 
     cJSON *fc_json = cJSON_Parse(fc);
@@ -162,4 +179,26 @@ weather_t weather_init(void) {
     ESP_LOGI(TAG, "init weather success.");
 
     return wea;
+}
+
+void get_aqi_level(uint32_t aqi, char * aqi_level, uint32_t * bg_color) {
+    if (aqi >= 301) {
+        strcpy(aqi_level, "严重");
+        *bg_color = 0xFF2400;
+    } else if (aqi >= 201 && aqi <= 300) {
+        strcpy(aqi_level, "重度");
+        *bg_color = 0x880B20;
+    } else if (aqi >= 161 && aqi <= 200) {
+        strcpy(aqi_level, "中度");
+        *bg_color = 0xBA3779;
+    } else if (aqi >= 101 && aqi <= 160) {
+        strcpy(aqi_level, "轻度");
+        *bg_color = 0xF29F39;
+    } else if (aqi >= 51 && aqi <= 100) {
+        strcpy(aqi_level, "良");
+        *bg_color = 0xF7DB64;
+    } else if (aqi > 0 && aqi <= 50) {
+        strcpy(aqi_level, "优");
+        *bg_color = 0x9CCA64;
+    }
 }

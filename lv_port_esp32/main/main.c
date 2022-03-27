@@ -23,6 +23,7 @@
 #include "esp_system.h"
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "lv_misc/lv_color.h"
 
 #include "event.h"
 #include "storage.h"
@@ -114,8 +115,6 @@ void app_main() {
     storage_init();
 
     pwm_init();
-
-    set_bl_pwm(1);
 
     gui_init();
 
