@@ -184,21 +184,21 @@ weather_t weather_init(void) {
 void get_aqi_level(uint32_t aqi, char * aqi_level, uint32_t * bg_color) {
     if (aqi >= 301) {
         strcpy(aqi_level, "严重");
-        *bg_color = 0xFF2400;
+        *bg_color = 0x7A1C24;
     } else if (aqi >= 201 && aqi <= 300) {
         strcpy(aqi_level, "重度");
-        *bg_color = 0x880B20;
+        *bg_color = 0xAA4277;
     } else if (aqi >= 161 && aqi <= 200) {
         strcpy(aqi_level, "中度");
-        *bg_color = 0xBA3779;
+        *bg_color = 0xC95E61;
     } else if (aqi >= 101 && aqi <= 160) {
         strcpy(aqi_level, "轻度");
-        *bg_color = 0xF29F39;
+        *bg_color = 0xE4A24F;
     } else if (aqi >= 51 && aqi <= 100) {
         strcpy(aqi_level, "良");
-        *bg_color = 0xF7DB64;
+        *bg_color = 0xF3DA77;
     } else if (aqi > 0 && aqi <= 50) {
         strcpy(aqi_level, "优");
-        *bg_color = 0x9CCA64;
+        *bg_color = 0xA6C887;
     }
 }

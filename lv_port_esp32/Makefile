@@ -3,5 +3,5 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := lvgl-demo
+PROJECT_NAME := lvgl-weather-clock
 include $(IDF_PATH)/make/project.mk

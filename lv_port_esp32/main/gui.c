@@ -82,21 +82,21 @@ LV_FONT_DECLARE(lv_font_montserrat_22);
 #include "font/fz_20.c"
 LV_FONT_DECLARE(fz_20);
 
+#include "font/fz_22.c"
+LV_FONT_DECLARE(fz_22);
+
 #include "font/mkb_30.c"
 LV_FONT_DECLARE(mkb_30);
 
 #include "font/mkb_70.c"
 LV_FONT_DECLARE(mkb_70);
 
-#include "font/myfont_3500hz_18.c"
-LV_FONT_DECLARE(myfont_3500hz_18);
-
 /**********************
  *  STATIC PROTOTYPES
  **********************/
 static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
-void draw_weather_icon(uint32_t day_or_night, uint32_t weacode);
+static void draw_weather_icon(uint32_t day_or_night, uint32_t weacode);
 
 static lv_obj_t * scr;
 static lv_obj_t * hour_label;
@@ -113,6 +113,7 @@ static lv_obj_t * humidity_bar;
 static lv_obj_t * img_gif;
 static lv_obj_t * weather_img;
 static lv_obj_t * loading_label;
+static lv_obj_t * aqi_canvas;
 
 static uint32_t in = 0;
 static weather_t weather;
@@ -161,6 +162,13 @@ void wea_task(lv_task_t * task) {
         lv_label_set_text(city_label, weather.city);
         lv_label_set_text(weather_label, weather.weather);
         lv_label_set_text_fmt(aqi_label, "%s", level);
+
+        lv_draw_rect_dsc_t rect_dsc;
+        lv_draw_rect_dsc_init(&rect_dsc);
+        rect_dsc.radius = 5;
+        rect_dsc.bg_color = lv_color_hex(color);
+        rect_dsc.border_width = 0;
+        lv_canvas_draw_rect(aqi_canvas, 5, 5, 60, 30, &rect_dsc);
     }
 }
 
@@ -191,7 +199,7 @@ void img_task(lv_task_t * task) {
     }
 }
 
-void draw_weather_icon(uint32_t day_or_night, uint32_t weacode) {
+static void draw_weather_icon(uint32_t day_or_night, uint32_t weacode) {
     uint32_t code = weacode;
     if (day_or_night == 1) {
         if (weacode == 0) {
@@ -354,45 +362,41 @@ void display(display_type_t type) {
         // 城市
         static lv_style_t city_style;
         lv_style_init(&city_style);	
-        lv_style_set_text_font(&city_style, LV_STATE_DEFAULT, &myfont_3500hz_18);
+        lv_style_set_text_font(&city_style, LV_STATE_DEFAULT, &fz_22);
         lv_style_set_text_color(&city_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
         city_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(city_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(city_label, NULL, LV_ALIGN_IN_TOP_LEFT, 30, 10);
+        lv_obj_align(city_label, NULL, LV_ALIGN_IN_TOP_LEFT, 10, 5);
         lv_obj_add_style(city_label, LV_LABEL_PART_MAIN, &city_style);
 
         // 天气状况
         weather_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(weather_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 10, 40);
+        lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 40);
         lv_obj_add_style(weather_label, LV_LABEL_PART_MAIN, &city_style);
+        lv_obj_set_width(weather_label, 120);
+        lv_label_set_align(weather_label, LV_LABEL_ALIGN_CENTER);
 
-        lv_draw_rect_dsc_t rect_dsc;
-        lv_draw_rect_dsc_init(&rect_dsc);
-        rect_dsc.radius = 5;
-        rect_dsc.bg_color = lv_color_hex(0x9CCA64);
-        rect_dsc.border_width = 0;
-
-        static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(50, 40)];
-
-        lv_obj_t * canvas = lv_canvas_create(scene_main, NULL);
-        lv_canvas_set_buffer(canvas, cbuf, 50, 40, LV_IMG_CF_TRUE_COLOR);
-        lv_obj_align(canvas, NULL, LV_ALIGN_IN_TOP_MID, 20, 10);
-        lv_canvas_fill_bg(canvas, LV_COLOR_YELLOW, LV_OPA_COVER);
-        lv_canvas_draw_rect(canvas, 0, 0, 40, 28, &rect_dsc);
-        // lv_canvas_draw_text(canvas, 0, 0, 40, &label_dsc, "SS", LV_LABEL_ALIGN_CENTER);
+        // 空气质量底框
+        static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(70, 40)];
+        aqi_canvas = lv_canvas_create(scene_main, NULL);
+        lv_canvas_set_buffer(aqi_canvas, cbuf, 70, 40, LV_IMG_CF_TRUE_COLOR);
+        lv_obj_align(aqi_canvas, NULL, LV_ALIGN_IN_TOP_MID, 20, -3);
+        lv_canvas_fill_bg(aqi_canvas, LV_COLOR_BLACK, LV_OPA_COVER);
 
         // 空气质量
         static lv_style_t aqi_style;
         lv_style_init(&aqi_style);	
-        lv_style_set_text_font(&aqi_style, LV_STATE_DEFAULT, &myfont_3500hz_18);
-        lv_style_set_text_color(&aqi_style, LV_STATE_DEFAULT, LV_COLOR_RED);
+        lv_style_set_text_font(&aqi_style, LV_STATE_DEFAULT, &fz_22);
+        lv_style_set_text_color(&aqi_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
         aqi_label = lv_label_create(scene_main, NULL);
         lv_label_set_long_mode(aqi_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(aqi_label, canvas, LV_ALIGN_CENTER, 3, -5);
+        lv_obj_align(aqi_label, aqi_canvas, LV_ALIGN_CENTER, 6, -3);
         lv_obj_add_style(aqi_label, LV_LABEL_PART_MAIN, &aqi_style);
+        lv_obj_set_width(aqi_label, 60);
+        lv_label_set_align(aqi_label, LV_LABEL_ALIGN_CENTER);
 
         // 刷新任务
         lv_task_t * time_task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
