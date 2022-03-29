@@ -72,14 +72,19 @@ static void event_handle(void *pvParameter) {
 
     while (1) {
         if (xQueueReceive(basic_evt_queue, &event_flag, portMAX_DELAY)) {
-            if (event_flag == EVENT_WIFI_STA_CONNECTED) {
+            switch (event_flag)
+            {
+            case EVENT_WIFI_STA_CONNECTED:
+                set_wifi_status(1);
+
                 set_loading_text("Sntp init...");
                 sntp_time_init();
 
                 set_loading_text("Weather init...");
                 weather_t wea = weather_init();
                 set_weather_info(wea);
-            } else if (event_flag == EVENT_SNTP_INIT) {
+                break;
+            case EVENT_SNTP_INIT:
                 set_loading_text("Success!");
                 vTaskDelay(500 / portTICK_PERIOD_MS);
 
@@ -88,20 +93,29 @@ static void event_handle(void *pvParameter) {
 
                 // 启动更新数据任务
                 xTaskCreate(update_data_task, "update", 1024 * 8, NULL, 1, NULL);
-            } else if (event_flag == EVENT_WIFI_STA_START) {
+                break;
+            case EVENT_WIFI_STA_START:
                 set_loading_text("Wifi init...");
-            } else if (event_flag == EVENT_WIFI_STA_DISCONNECTED) {
+                break;
+            case EVENT_WIFI_STA_FAILURE:
                 set_loading_text("Wifi error...");
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 ESP_LOGI(TAG, "Wifi connect error restart.");
                 esp_restart();
-            } else if (event_flag == EVENT_SINT_FAILURE) {
+                break;
+            case EVENT_WIFI_STA_DISCONNECTED:
+                set_wifi_status(0);
+                break;
+            case EVENT_SINT_FAILURE:
                 set_loading_text("Sntp error...");
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 ESP_LOGI(TAG, "Sntp sync error restart.");
                 esp_restart();
+                break;
+            default:
+                break;
             }
         }
 

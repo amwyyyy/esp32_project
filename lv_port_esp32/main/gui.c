@@ -108,6 +108,7 @@ static lv_obj_t * humidity_label;
 static lv_obj_t * city_label;
 static lv_obj_t * weather_label;
 static lv_obj_t * aqi_label;
+static lv_obj_t * wifi_label;
 static lv_obj_t * temperature_bar;
 static lv_obj_t * humidity_bar;
 static lv_obj_t * img_gif;
@@ -117,6 +118,7 @@ static lv_obj_t * aqi_canvas;
 
 static uint32_t in = 0;
 static weather_t weather;
+static uint32_t wifi_status = 0;
 
 void gui_init(void) {
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
@@ -131,6 +133,12 @@ void clock_task(lv_task_t * task) {
     lv_label_set_text_fmt(minute_label, "%02d", dt.minute);
     lv_label_set_text_fmt(second_label, "%02d", dt.second);
     lv_label_set_text_fmt(date_label, "%02d月%02d日  %s", dt.month, dt.day, get_week_text(dt.week));
+
+    if (wifi_status == 1) {
+        lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
+    } else {
+        lv_label_set_text(wifi_label, "");
+    }
 }
 
 void wea_task(lv_task_t * task) {
@@ -265,138 +273,172 @@ void set_weather_info(weather_t wea) {
     weather = wea;
 }
 
+void set_wifi_status(uint32_t status) {
+    wifi_status = status;
+}
+
+static void loading_page() {
+    lv_obj_t * preload = lv_spinner_create(scr, NULL);
+    lv_obj_set_size(preload, 100, 100);
+    lv_obj_align(preload, NULL, LV_ALIGN_CENTER, 0, 0);
+
+    static lv_style_t label_style;
+    lv_style_init(&label_style);	
+    lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+    loading_label = lv_label_create(scr, NULL);
+    lv_label_set_long_mode(loading_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(loading_label, NULL, LV_ALIGN_IN_BOTTOM_MID, -30, -30);
+    lv_obj_add_style(loading_label, LV_LABEL_PART_MAIN, &label_style);
+    
+    set_loading_text("Loading...");
+}
+
+static void clock_page() {
+    lv_obj_t * scene_main = lv_obj_create(scr, NULL);
+    lv_obj_reset_style_list(scene_main, LV_OBJ_PART_MAIN);
+    lv_obj_set_size(scene_main, lv_obj_get_width(scr), lv_obj_get_height(scr));
+    lv_obj_align(scene_main, NULL, LV_ALIGN_CENTER, 0, 0);
+
+    // 时间显示
+    // 小时
+    static lv_style_t hour_style;
+    lv_style_init(&hour_style);	
+    lv_style_set_text_font(&hour_style, LV_STATE_DEFAULT, &mkb_70);
+    lv_style_set_text_color(&hour_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+    hour_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(hour_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(hour_label, NULL, LV_ALIGN_IN_LEFT_MID, 15, -35);
+    lv_obj_add_style(hour_label, LV_LABEL_PART_MAIN, &hour_style);
+
+    // 分钟
+    static lv_style_t minute_style;
+    lv_style_init(&minute_style);	
+    lv_style_set_text_font(&minute_style, LV_STATE_DEFAULT, &mkb_70);
+    lv_style_set_text_color(&minute_style, LV_STATE_DEFAULT, LV_COLOR_ORANGE);
+
+    minute_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(minute_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(minute_label, NULL, LV_ALIGN_IN_LEFT_MID, 103, -35);
+    lv_obj_add_style(minute_label, LV_LABEL_PART_MAIN, &minute_style);
+
+    // 秒
+    static lv_style_t second_style;
+    lv_style_init(&second_style);	
+    lv_style_set_text_font(&second_style, LV_STATE_DEFAULT, &mkb_30);
+    lv_style_set_text_color(&second_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+    second_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(second_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(second_label, NULL, LV_ALIGN_IN_LEFT_MID, 190, -5);
+    lv_obj_add_style(second_label, LV_LABEL_PART_MAIN, &second_style);
+
+    // 日期
+    static lv_style_t fz_20_style;
+    lv_style_init(&fz_20_style);	
+    lv_style_set_text_font(&fz_20_style, LV_STATE_DEFAULT, &fz_20);
+    lv_style_set_text_color(&fz_20_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+    date_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(date_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(date_label, NULL, LV_ALIGN_IN_LEFT_MID, 20, 35);
+    lv_obj_add_style(date_label, LV_LABEL_PART_MAIN, &fz_20_style);
+
+    // 太空人动画
+    img_gif = lv_img_create(scene_main, NULL);
+    lv_obj_align(img_gif, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 10, -50);
+
+    // 温度图标
+    lv_obj_t * temperature_img = lv_img_create(scene_main, NULL);
+    lv_obj_align(temperature_img, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 10, -25);
+    lv_img_set_src(temperature_img, &temperature);
+
+    // 湿度图标
+    lv_obj_t * humidity_img = lv_img_create(scene_main, NULL);
+    lv_obj_align(humidity_img, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 10, 10);
+    lv_img_set_src(humidity_img, &humidity);
+
+    // 温度条
+    temperature_bar = lv_bar_create(scene_main, NULL);
+    lv_obj_set_size(temperature_bar, 60, 6);
+    lv_obj_align(temperature_bar, NULL, LV_ALIGN_IN_BOTTOM_MID, -38, -47);
+
+    // 湿度条
+    humidity_bar = lv_bar_create(scene_main, NULL);
+    lv_obj_set_size(humidity_bar, 60, 6);
+    lv_obj_align(humidity_bar, NULL, LV_ALIGN_IN_BOTTOM_MID, -38, -12);
+
+    // 温度
+    temperature_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(temperature_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(temperature_label, NULL, LV_ALIGN_IN_BOTTOM_MID, 17, -40);
+    lv_obj_add_style(temperature_label, LV_LABEL_PART_MAIN, &fz_20_style);
+
+    // 湿度
+    humidity_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(humidity_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(humidity_label, NULL, LV_ALIGN_IN_BOTTOM_MID, 17, -10);
+    lv_obj_add_style(humidity_label, LV_LABEL_PART_MAIN, &fz_20_style);
+
+    // 天气图标
+    weather_img = lv_img_create(scene_main, NULL);
+    lv_obj_align(weather_img, NULL, LV_ALIGN_IN_TOP_RIGHT, 15, 0);
+
+    // wifi 图标
+    static lv_style_t wifi_style;
+    lv_style_init(&wifi_style);	
+    lv_style_set_text_color(&wifi_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+    wifi_label = lv_label_create(scene_main, NULL);
+    lv_obj_align(wifi_label, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 8);
+    lv_obj_add_style(wifi_label, LV_LABEL_PART_MAIN, &wifi_style);
+
+    // 城市
+    static lv_style_t city_style;
+    lv_style_init(&city_style);	
+    lv_style_set_text_font(&city_style, LV_STATE_DEFAULT, &fz_22);
+    lv_style_set_text_color(&city_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+    city_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(city_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(city_label, NULL, LV_ALIGN_IN_TOP_LEFT, 30, 5);
+    lv_obj_add_style(city_label, LV_LABEL_PART_MAIN, &city_style);
+
+    // 天气状况
+    weather_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 40);
+    lv_obj_add_style(weather_label, LV_LABEL_PART_MAIN, &city_style);
+    lv_obj_set_width(weather_label, 120);
+    lv_label_set_align(weather_label, LV_LABEL_ALIGN_CENTER);
+
+    // 空气质量底框
+    static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(70, 40)];
+    aqi_canvas = lv_canvas_create(scene_main, NULL);
+    lv_canvas_set_buffer(aqi_canvas, cbuf, 70, 40, LV_IMG_CF_TRUE_COLOR);
+    lv_obj_align(aqi_canvas, NULL, LV_ALIGN_IN_TOP_MID, 20, -3);
+    lv_canvas_fill_bg(aqi_canvas, LV_COLOR_BLACK, LV_OPA_COVER);
+
+    // 空气质量
+    static lv_style_t aqi_style;
+    lv_style_init(&aqi_style);	
+    lv_style_set_text_font(&aqi_style, LV_STATE_DEFAULT, &fz_22);
+    lv_style_set_text_color(&aqi_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+    aqi_label = lv_label_create(scene_main, NULL);
+    lv_label_set_long_mode(aqi_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(aqi_label, aqi_canvas, LV_ALIGN_CENTER, 6, -3);
+    lv_obj_add_style(aqi_label, LV_LABEL_PART_MAIN, &aqi_style);
+    lv_obj_set_width(aqi_label, 60);
+    lv_label_set_align(aqi_label, LV_LABEL_ALIGN_CENTER);
+}
+
 void display(display_type_t type) {
     lv_obj_clean(scr);
 
     if (type == DISP_CLOCK) {
-        lv_obj_t * scene_main = lv_obj_create(scr, NULL);
-        lv_obj_reset_style_list(scene_main, LV_OBJ_PART_MAIN);
-        lv_obj_set_size(scene_main, lv_obj_get_width(scr), lv_obj_get_height(scr));
-        lv_obj_align(scene_main, NULL, LV_ALIGN_CENTER, 0, 0);
-
-        // 时间显示
-        // 小时
-        static lv_style_t hour_style;
-        lv_style_init(&hour_style);	
-        lv_style_set_text_font(&hour_style, LV_STATE_DEFAULT, &mkb_70);
-        lv_style_set_text_color(&hour_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
-
-        hour_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(hour_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(hour_label, NULL, LV_ALIGN_IN_LEFT_MID, 15, -35);
-        lv_obj_add_style(hour_label, LV_LABEL_PART_MAIN, &hour_style);
-
-        // 分钟
-        static lv_style_t minute_style;
-        lv_style_init(&minute_style);	
-        lv_style_set_text_font(&minute_style, LV_STATE_DEFAULT, &mkb_70);
-        lv_style_set_text_color(&minute_style, LV_STATE_DEFAULT, LV_COLOR_ORANGE);
-
-        minute_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(minute_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(minute_label, NULL, LV_ALIGN_IN_LEFT_MID, 103, -35);
-        lv_obj_add_style(minute_label, LV_LABEL_PART_MAIN, &minute_style);
-
-        // 秒
-        static lv_style_t second_style;
-        lv_style_init(&second_style);	
-        lv_style_set_text_font(&second_style, LV_STATE_DEFAULT, &mkb_30);
-        lv_style_set_text_color(&second_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
-
-        second_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(second_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(second_label, NULL, LV_ALIGN_IN_LEFT_MID, 190, -5);
-        lv_obj_add_style(second_label, LV_LABEL_PART_MAIN, &second_style);
-
-        // 日期
-        static lv_style_t fz_20_style;
-        lv_style_init(&fz_20_style);	
-        lv_style_set_text_font(&fz_20_style, LV_STATE_DEFAULT, &fz_20);
-        lv_style_set_text_color(&fz_20_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
-
-        date_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(date_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(date_label, NULL, LV_ALIGN_IN_LEFT_MID, 20, 35);
-        lv_obj_add_style(date_label, LV_LABEL_PART_MAIN, &fz_20_style);
-
-        // 太空人动画
-        img_gif = lv_img_create(scene_main, NULL);
-        lv_obj_align(img_gif, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, 10, -50);
-
-        // 温度图标
-        lv_obj_t * temperature_img = lv_img_create(scene_main, NULL);
-        lv_obj_align(temperature_img, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 10, -25);
-        lv_img_set_src(temperature_img, &temperature);
-
-        // 湿度图标
-        lv_obj_t * humidity_img = lv_img_create(scene_main, NULL);
-        lv_obj_align(humidity_img, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 10, 10);
-        lv_img_set_src(humidity_img, &humidity);
-
-        // 温度条
-        temperature_bar = lv_bar_create(scene_main, NULL);
-        lv_obj_set_size(temperature_bar, 60, 6);
-        lv_obj_align(temperature_bar, NULL, LV_ALIGN_IN_BOTTOM_MID, -38, -47);
-
-        // 湿度条
-        humidity_bar = lv_bar_create(scene_main, NULL);
-        lv_obj_set_size(humidity_bar, 60, 6);
-        lv_obj_align(humidity_bar, NULL, LV_ALIGN_IN_BOTTOM_MID, -38, -12);
-
-        // 温度
-        temperature_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(temperature_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(temperature_label, NULL, LV_ALIGN_IN_BOTTOM_MID, 17, -40);
-        lv_obj_add_style(temperature_label, LV_LABEL_PART_MAIN, &fz_20_style);
-
-        // 湿度
-        humidity_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(humidity_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(humidity_label, NULL, LV_ALIGN_IN_BOTTOM_MID, 17, -10);
-        lv_obj_add_style(humidity_label, LV_LABEL_PART_MAIN, &fz_20_style);
-
-        // 天气图标
-        weather_img = lv_img_create(scene_main, NULL);
-        lv_obj_align(weather_img, NULL, LV_ALIGN_IN_TOP_RIGHT, 15, 0);
-
-        // 城市
-        static lv_style_t city_style;
-        lv_style_init(&city_style);	
-        lv_style_set_text_font(&city_style, LV_STATE_DEFAULT, &fz_22);
-        lv_style_set_text_color(&city_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
-
-        city_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(city_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(city_label, NULL, LV_ALIGN_IN_TOP_LEFT, 10, 5);
-        lv_obj_add_style(city_label, LV_LABEL_PART_MAIN, &city_style);
-
-        // 天气状况
-        weather_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(weather_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 40);
-        lv_obj_add_style(weather_label, LV_LABEL_PART_MAIN, &city_style);
-        lv_obj_set_width(weather_label, 120);
-        lv_label_set_align(weather_label, LV_LABEL_ALIGN_CENTER);
-
-        // 空气质量底框
-        static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(70, 40)];
-        aqi_canvas = lv_canvas_create(scene_main, NULL);
-        lv_canvas_set_buffer(aqi_canvas, cbuf, 70, 40, LV_IMG_CF_TRUE_COLOR);
-        lv_obj_align(aqi_canvas, NULL, LV_ALIGN_IN_TOP_MID, 20, -3);
-        lv_canvas_fill_bg(aqi_canvas, LV_COLOR_BLACK, LV_OPA_COVER);
-
-        // 空气质量
-        static lv_style_t aqi_style;
-        lv_style_init(&aqi_style);	
-        lv_style_set_text_font(&aqi_style, LV_STATE_DEFAULT, &fz_22);
-        lv_style_set_text_color(&aqi_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
-
-        aqi_label = lv_label_create(scene_main, NULL);
-        lv_label_set_long_mode(aqi_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(aqi_label, aqi_canvas, LV_ALIGN_CENTER, 6, -3);
-        lv_obj_add_style(aqi_label, LV_LABEL_PART_MAIN, &aqi_style);
-        lv_obj_set_width(aqi_label, 60);
-        lv_label_set_align(aqi_label, LV_LABEL_ALIGN_CENTER);
+        clock_page();
 
         // 刷新任务
         lv_task_t * time_task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
@@ -408,20 +450,7 @@ void display(display_type_t type) {
         lv_task_t * weather_task = lv_task_create(wea_task, 1000 * 60 * 5, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(weather_task);
     } else if (type == DISP_LOADING) {
-        lv_obj_t * preload = lv_spinner_create(scr, NULL);
-        lv_obj_set_size(preload, 100, 100);
-        lv_obj_align(preload, NULL, LV_ALIGN_CENTER, 0, 0);
-
-        static lv_style_t label_style;
-        lv_style_init(&label_style);	
-        lv_style_set_text_color(&label_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
-
-        loading_label = lv_label_create(scr, NULL);
-        lv_label_set_long_mode(loading_label, LV_LABEL_LONG_EXPAND);
-        lv_obj_align(loading_label, NULL, LV_ALIGN_IN_BOTTOM_MID, -30, -30);
-        lv_obj_add_style(loading_label, LV_LABEL_PART_MAIN, &label_style);
-        
-        set_loading_text("Loading...");
+        loading_page();
     }
 }
 

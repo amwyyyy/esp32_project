@@ -36,4 +36,10 @@ void set_weather_info(weather_t wea);
  */
 void display(display_type_t type);
 
+/**
+ * @brief 设置 wifi 图标
+ * 
+ */
+void set_wifi_status(uint32_t status);
+
 #endif

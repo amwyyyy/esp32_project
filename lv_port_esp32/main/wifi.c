@@ -31,15 +31,18 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     uint32_t wifi_sta_flag;
     static int s_retry_num = 0;
 
-    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_WIFI_READY) {
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         /*
          *   发送连接开始
          */
         wifi_sta_flag = EVENT_WIFI_STA_START;
         xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
-    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_sta_flag = EVENT_WIFI_STA_DISCONNECTED;
+        xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
+
         if (s_retry_num < 5) {
             esp_wifi_connect();
             s_retry_num++;
@@ -52,7 +55,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         /*
          *   发送连接失败
          */
-        wifi_sta_flag = EVENT_WIFI_STA_DISCONNECTED;
+        wifi_sta_flag = EVENT_WIFI_STA_FAILURE;
         xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;

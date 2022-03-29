@@ -6,6 +6,8 @@ typedef enum {
     EVENT_WIFI_STA_CONNECTED = 0,
     /* Wifi 断开连接 */
     EVENT_WIFI_STA_DISCONNECTED,
+    /* Wifi 连接失败 */
+    EVENT_WIFI_STA_FAILURE,
     /* Wifi 开始连接 */
     EVENT_WIFI_STA_START,
     /* 初始化网络时间 */
