@@ -165,9 +165,9 @@ void app_main(void)
     //     vTaskDelay(1000 / portTICK_PERIOD_MS);
     // }
 
-    uint32_t value = 20;
+    uint32_t value = 3;
 
-    uint32_t bl = (0xFF - 200) + (value * 20);
+    uint32_t bl = (0xFF - 250) + (value * 25);
     printf("3. LEDC set duty = %d without fade\n", bl);
     for (ch = 0; ch < LEDC_TEST_CH_NUM; ch++)
     {
