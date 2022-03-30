@@ -407,17 +407,17 @@ static void clock_page() {
 
     // 天气状况
     weather_label = lv_label_create(scene_main, NULL);
-    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_EXPAND);
+    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_BREAK);
     lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 40);
     lv_obj_add_style(weather_label, LV_LABEL_PART_MAIN, &city_style);
     lv_obj_set_width(weather_label, 120);
     lv_label_set_align(weather_label, LV_LABEL_ALIGN_CENTER);
 
     // 空气质量底框
-    static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(70, 40)];
+    static lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(70, 35)];
     aqi_canvas = lv_canvas_create(scene_main, NULL);
-    lv_canvas_set_buffer(aqi_canvas, cbuf, 70, 40, LV_IMG_CF_TRUE_COLOR);
-    lv_obj_align(aqi_canvas, NULL, LV_ALIGN_IN_TOP_MID, 20, -3);
+    lv_canvas_set_buffer(aqi_canvas, cbuf, 70, 35, LV_IMG_CF_TRUE_COLOR);
+    lv_obj_align(aqi_canvas, NULL, LV_ALIGN_IN_TOP_MID, 15, -3);
     lv_canvas_fill_bg(aqi_canvas, LV_COLOR_BLACK, LV_OPA_COVER);
 
     // 空气质量
@@ -427,10 +427,10 @@ static void clock_page() {
     lv_style_set_text_color(&aqi_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
 
     aqi_label = lv_label_create(scene_main, NULL);
-    lv_label_set_long_mode(aqi_label, LV_LABEL_LONG_EXPAND);
-    lv_obj_align(aqi_label, aqi_canvas, LV_ALIGN_CENTER, 6, -3);
+    lv_label_set_long_mode(aqi_label, LV_LABEL_LONG_BREAK);
+    lv_obj_align(aqi_label, aqi_canvas, LV_ALIGN_CENTER, 0, -1);
     lv_obj_add_style(aqi_label, LV_LABEL_PART_MAIN, &aqi_style);
-    lv_obj_set_width(aqi_label, 60);
+    lv_obj_set_width(aqi_label, 35);
     lv_label_set_align(aqi_label, LV_LABEL_ALIGN_CENTER);
 }
 

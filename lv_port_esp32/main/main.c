@@ -132,7 +132,7 @@ void app_main() {
 
     gui_init();
 
-    // set_wifi_info("xiongda", "15999554794");
+    set_wifi_info("xiongda", "15999554794");
 
     connect_wifi();
 
