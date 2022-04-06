@@ -5,4 +5,5 @@ idf_component_register(SRCS "main.c"
                             "wifi.c"
                             "sntp_time.c"
                             "weather.c"
-                       INCLUDE_DIRS "" "inc")
+                       INCLUDE_DIRS "" "inc"
+                       EMBED_FILES page/root.html)
