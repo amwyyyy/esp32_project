@@ -66,7 +66,7 @@ void connect_wifi() {
 static void update_data_task(void *pvParameter) {
     while (1) {
         vTaskDelay(1000 * 60 * 60 / portTICK_PERIOD_MS);
-        weather_t wea = weather_init();
+        weather_t wea = weather_init("101280604");
         set_weather_info(wea);
     }
 }
@@ -82,11 +82,15 @@ static void event_handle(void *pvParameter) {
                 set_wifi_status(1);
 
                 set_loading_text("Sntp init...");
-                sntp_time_init();
+                // sntp_time_init();
 
                 set_loading_text("Weather init...");
-                weather_t wea = weather_init();
-                set_weather_info(wea);
+                // weather_t wea = weather_init("101280604");
+                // set_weather_info(wea);
+
+                char * ccode = query_city_code("深圳");
+                ESP_LOGI(TAG, "city_code: %s", ccode);
+
                 break;
             case EVENT_SNTP_INIT:
                 set_loading_text("Success!");
@@ -138,7 +142,7 @@ void app_main() {
 
     connect_wifi();
 
-    xTaskCreate(event_handle, "event", 1024 * 8, NULL, 1, NULL);
+    xTaskCreate(event_handle, "event", 1024 * 16, NULL, 1, NULL);
 
     ESP_LOGI(TAG, "[APP] Free internal memory: %d kb", esp_get_free_internal_heap_size() / 1024);
     ESP_LOGI(TAG, "[APP] Free all memory: %d kb", esp_get_free_heap_size() / 1024);

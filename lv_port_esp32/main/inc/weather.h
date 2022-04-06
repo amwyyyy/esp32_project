@@ -17,7 +17,15 @@ typedef struct {
  * @brief 初始化天气信息
  *
  */
-weather_t weather_init(void);
+weather_t weather_init(char * city_code);
+
+/**
+ * @brief 根据城市名称查询城市编码
+ * 
+ * @param city_name 城市名称
+ * @return char* 城市编码
+ */
+char * query_city_code(char * city_name);
 
 /**
  * @brief 获取空气质量等级

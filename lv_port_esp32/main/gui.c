@@ -137,7 +137,7 @@ void clock_task(lv_task_t * task) {
     if (wifi_status == 1) {
         lv_label_set_text(wifi_label, LV_SYMBOL_WIFI);
     } else {
-        lv_label_set_text(wifi_label, "");
+        lv_label_set_text(wifi_label, LV_SYMBOL_GPS);
     }
 }
 
