@@ -6,6 +6,7 @@
 typedef enum {
     DISP_LOADING = 0,
     DISP_CLOCK,
+    DISP_SMART_CONFIG,
 
 } display_type_t;
 

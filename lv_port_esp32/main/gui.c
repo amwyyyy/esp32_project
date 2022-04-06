@@ -451,6 +451,8 @@ void display(display_type_t type) {
         lv_task_ready(weather_task);
     } else if (type == DISP_LOADING) {
         loading_page();
+    } else if (type == DISP_SMART_CONFIG) {
+
     }
 }
 

@@ -32,6 +32,7 @@
 #include "wifi.h"
 #include "sntp_time.h"
 #include "weather.h"
+#include "smart_config.h"
 
 #define TAG "main"
 
@@ -49,8 +50,11 @@ void connect_wifi() {
     char get_pwd[64];
 
     if (get_wifi_info(get_ssid, get_pwd) == ESP_OK) {
-        ESP_LOGI(TAG, "ssid信息有效 进行开机自动连接wifi ssid: %s pwd: %s", get_ssid, get_pwd);
+        ESP_LOGI(TAG, "ssid 配置有效 进行开机自动连接 wifi ssid: %s pwd: %s", get_ssid, get_pwd);
         wifi_init_sta(get_ssid, get_pwd);
+    } else {
+        ESP_LOGI(TAG, "ssid 配置无效，开始自动配网。");
+        start_smart_config();
     }
 }
 
@@ -131,8 +135,6 @@ void app_main() {
     pwm_init();
 
     gui_init();
-
-    set_wifi_info("xiongda", "15999554794");
 
     connect_wifi();
 
