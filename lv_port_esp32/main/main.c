@@ -24,6 +24,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "lv_misc/lv_color.h"
+#include "nvs_flash.h"
 
 #include "event.h"
 #include "storage.h"
@@ -36,10 +37,12 @@
 
 #define TAG "main"
 
+static uint32_t is_init = 1;
 xQueueHandle basic_evt_queue;
 
 static void event_handle(void *pvParameter);
 static void update_data_task(void *pvParameter);
+static char * city_code();
 
 /**
  * @brief 开机自动连接wifi
@@ -66,9 +69,29 @@ void connect_wifi() {
 static void update_data_task(void *pvParameter) {
     while (1) {
         vTaskDelay(1000 * 60 * 60 / portTICK_PERIOD_MS);
-        weather_t wea = weather_init("101280604");
+        weather_t wea = weather_init(city_code());
         set_weather_info(wea);
     }
+}
+
+static char * city_code() {
+    char ct_code[16];
+    if (get_city_code(ct_code) != ESP_OK) {
+        char ct_name[32];
+        if (get_city_name(ct_name) == ESP_OK) {
+            char * tmp_ct_code = query_city_code(ct_name);
+            strcpy(ct_code, tmp_ct_code);
+        } else {
+            char * tmp_ct_code = query_city_code_by_ip();
+            strcpy(ct_code, tmp_ct_code);
+        }
+        set_city_code(ct_code);
+    }
+
+    ESP_LOGI(TAG, "city_code: %s", ct_code);
+    char * code = malloc(sizeof(char) * strlen(ct_code));
+    strcpy(code, ct_code);
+    return code;
 }
 
 static void event_handle(void *pvParameter) {
@@ -81,15 +104,14 @@ static void event_handle(void *pvParameter) {
             case EVENT_WIFI_STA_CONNECTED:
                 set_wifi_status(1);
 
-                set_loading_text("Sntp init...");
-                // sntp_time_init();
+                if (is_init) {
+                    set_loading_text("Sntp init...");
+                    sntp_time_init();
 
-                set_loading_text("Weather init...");
-                // weather_t wea = weather_init("101280604");
-                // set_weather_info(wea);
-
-                char * ccode = query_city_code("深圳");
-                ESP_LOGI(TAG, "city_code: %s", ccode);
+                    set_loading_text("Weather init...");
+                    weather_t wea = weather_init(city_code());
+                    set_weather_info(wea);
+                }
 
                 break;
             case EVENT_SNTP_INIT:
@@ -99,6 +121,9 @@ static void event_handle(void *pvParameter) {
                 // 显示天气时间界面
                 display(DISP_CLOCK);
 
+                // 初始化完成修改标志位
+                is_init = 0;
+
                 // 启动更新数据任务
                 xTaskCreate(update_data_task, "update", 1024 * 8, NULL, 1, NULL);
                 break;
@@ -106,10 +131,13 @@ static void event_handle(void *pvParameter) {
                 set_loading_text("Wifi init...");
                 break;
             case EVENT_WIFI_STA_FAILURE:
-                set_loading_text("Wifi error...");
+                if (is_init) {
+                    set_loading_text("Wifi error...");
+                }
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 ESP_LOGI(TAG, "Wifi connect error restart.");
+                ESP_ERROR_CHECK(nvs_flash_erase());
                 esp_restart();
                 break;
             case EVENT_WIFI_STA_DISCONNECTED:

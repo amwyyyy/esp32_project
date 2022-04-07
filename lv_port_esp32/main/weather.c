@@ -79,15 +79,14 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
 }
 
 char * query_city_code(char * city_name) {
-    char * local_response_buffer = malloc(sizeof(char) * 1024 * 4);
+    char local_response_buffer[4 * 1024];
     char * code = malloc(sizeof(char) * 32);
 
-    char *url = malloc(sizeof(char) * 64);
-    sprintf(url, "http://toy1.weather.com.cn/search?cityname=%s", "sz");
-
     // 异常返回默认值
-    strncpy(code, "101010100", 10);
-    code[9] = '\0';
+    strcpy(code, "101010100");
+
+    char *url = malloc(sizeof(char) * 64);
+    sprintf(url, "http://toy1.weather.com.cn/search?cityname=%s", city_name);
 
     esp_http_client_config_t config = {
         .url = url,
@@ -98,7 +97,7 @@ char * query_city_code(char * city_name) {
     };
 
     int s_retry_num = 0;
-     while (1) {
+    while (1) {
         esp_http_client_handle_t client = esp_http_client_init(&config);
 
         esp_err_t err = esp_http_client_perform(client);
@@ -117,36 +116,85 @@ char * query_city_code(char * city_name) {
         }
      }
 
-     ESP_LOGI(TAG, "%s", local_response_buffer);
+    ESP_LOGD(TAG, "%s", local_response_buffer);
 
-    // char tmp_response_buffer[5120];
-    // strncpy(tmp_response_buffer, local_response_buffer, strlen(local_response_buffer) - 1);
-    // char * token = strtok(tmp_response_buffer, "(");
+    // 去掉前后括号
+    char tmp_response_buffer[4 * 1024];
+    sscanf(local_response_buffer, "(%[^)]", tmp_response_buffer);
 
-    // cJSON *city_json = cJSON_Parse(token);
-    // if (city_json == NULL) {
-    //     ESP_LOGE(TAG, "json parse error: %s", cJSON_GetErrorPtr());
-    //     return code;
-    // }
+    cJSON *city_json = cJSON_Parse(tmp_response_buffer);
+    if (city_json == NULL) {
+        ESP_LOGE(TAG, "json parse error: %s", cJSON_GetErrorPtr());
+        free(url);
+        return code;
+    }
 
-    // cJSON *a0 = cJSON_DetachItemFromArray(city_json, 0);
-    // cJSON *ref = cJSON_GetObjectItemCaseSensitive(a0, "ref");
-    // if (cJSON_IsString(ref) && (ref->valuestring != NULL)) {
-    //     ESP_LOGI(TAG, "===---=== %s", ref->valuestring);
+    cJSON *a0 = cJSON_DetachItemFromArray(city_json, 0);
+    cJSON *ref = cJSON_GetObjectItemCaseSensitive(a0, "ref");
+    if (cJSON_IsString(ref) && (ref->valuestring != NULL)) {
+        ESP_LOGD(TAG, "城市名称查询结果: %s", ref->valuestring);
 
-    //     // 截取出城市编码
-    //     char * tmp = strstr(ref->valuestring, "~");
-    //     uint32_t length = strlen(ref->valuestring) - strlen(tmp);
-    //     strncpy(code, ref->valuestring, length);
-    //     code[length] = '\0';
-    //     return code;
-    // }
+        // 截取出城市编码
+        char * tmp = strstr(ref->valuestring, "~");
+        uint32_t length = strlen(ref->valuestring) - strlen(tmp);
+        strncpy(code, ref->valuestring, length);
+        code[length] = '\0';
+    }
+
+    free(url);
 
     return code;
 }
 
+char * query_city_code_by_ip() {
+    char local_response_buffer[1024];
+    char * code = malloc(sizeof(char) * 32);
+
+    // 异常返回默认值
+    strcpy(code, "101010100");
+
+    esp_http_client_config_t config = {
+        .url = "http://wgeo.weather.com.cn/ip/",
+        .method = HTTP_METHOD_GET,
+        .event_handler = _http_event_handler,
+        .user_data = local_response_buffer,
+        .disable_auto_redirect = true,
+    };
+
+    int s_retry_num = 0;
+    while (1) {
+        esp_http_client_handle_t client = esp_http_client_init(&config);
+
+        esp_err_t err = esp_http_client_perform(client);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "HTTP GET Status = %d, content_length = %d",
+                    esp_http_client_get_status_code(client),
+                    esp_http_client_get_content_length(client));
+            break;
+        } else {
+            ESP_LOGE(TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
+            s_retry_num++;
+        }
+
+        if (s_retry_num >= 3) {
+            return code;
+        }
+    }
+
+    ESP_LOGD(TAG, "%s", local_response_buffer);
+
+    char tmp_1[16];
+    char tmp_2[16];
+
+    sscanf(local_response_buffer, "%*[^\"]\"%[^\"]\"%*[^\"]\"%[^\"]\"", tmp_1, tmp_2);
+    ESP_LOGI(TAG, "get city code by ip: %s", tmp_2);
+
+    strcpy(code, tmp_2);
+    return code;
+}
+
 weather_t weather_init(char * city_code) {
-    char local_response_buffer[5120] = {0};
+    char local_response_buffer[6 * 1024] = {0};
 
     char *uri = malloc(sizeof(char) * 64);
     sprintf(uri, "/weather_index/%s.html", city_code);

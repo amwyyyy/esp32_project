@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "sdkconfig.h"
 
 #include "esp_heap_caps.h"
@@ -98,6 +99,10 @@ esp_err_t get_city_name(char *city_name) {
     switch (err) {
         case ESP_OK:
             ESP_LOGI(TAG, "city_name=%.*s;len=%d;", len, city_name_tmp, len);
+            if (strlen(city_name_tmp) == 0) {
+                return ESP_ERR_NVS_NOT_FOUND;
+            }
+
             for (size_t i = 0; i < len; i++) {
                 city_name[i] = city_name_tmp[i];
             }

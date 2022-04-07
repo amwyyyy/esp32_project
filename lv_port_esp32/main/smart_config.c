@@ -115,10 +115,10 @@ static esp_err_t config_get_handler(httpd_req_t *req)
             }
             if (httpd_query_key_value(buf, "cityname", city_name, sizeof(city_name)) == ESP_OK) {
                 ESP_LOGI(TAG, "Found URL query parameter => cityname= %s", url_decode(city_name));
+                set_city_name(city_name);
             }
 
             set_wifi_info(ssid, pwd);
-            set_city_name(city_name);
         }
         free(buf);
     }

@@ -43,20 +43,21 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         wifi_sta_flag = EVENT_WIFI_STA_DISCONNECTED;
         xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
 
-        if (s_retry_num < 5) {
+        if (s_retry_num < 10) {
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "retry to connect to the AP");
         } else {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-        }
-        ESP_LOGI(TAG, "connect to the AP fail");
 
-        /*
-         *   发送连接失败
-         */
-        wifi_sta_flag = EVENT_WIFI_STA_FAILURE;
-        xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
+            /*
+             *   发送连接失败
+             */
+            wifi_sta_flag = EVENT_WIFI_STA_FAILURE;
+            xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
+        }
+        vTaskDelay(1000 * 30 / portTICK_PERIOD_MS);
+        ESP_LOGI(TAG, "connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
@@ -68,6 +69,13 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
          */
         wifi_sta_flag = EVENT_WIFI_STA_CONNECTED;
         xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_LOST_IP) {
+        ESP_LOGI(TAG, "lost ip!");
+
+        wifi_sta_flag = EVENT_WIFI_STA_DISCONNECTED;
+        xQueueSend(basic_evt_queue, &wifi_sta_flag, NULL);
+    } else {
+        ESP_LOGI(TAG, "event: %s, %d", event_base, event_id);
     }
 }
 
@@ -87,6 +95,7 @@ void wifi_init_sta(char *ssid, char *pass) {
     // 注册 WiFi 事件
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 	ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
+	ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_LOST_IP, &wifi_event_handler, NULL));
 
     wifi_config_t wifi_config;
     bzero(&wifi_config, sizeof(wifi_config_t));
@@ -116,16 +125,14 @@ void wifi_init_sta(char *ssid, char *pass) {
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 ssid, pass);
+        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", ssid, pass);
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 ssid, pass);
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", ssid, pass);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
 
-    ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler));
-    ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler));
-    vEventGroupDelete(s_wifi_event_group);
+    // ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler));
+    // ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler));
+    // vEventGroupDelete(s_wifi_event_group);
 }

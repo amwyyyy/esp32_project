@@ -28,6 +28,13 @@ weather_t weather_init(char * city_code);
 char * query_city_code(char * city_name);
 
 /**
+ * @brief 根据 ip 获取城市编码
+ * 
+ * @return char* 
+ */
+char * query_city_code_by_ip();
+
+/**
  * @brief 获取空气质量等级
  * 
  */
