@@ -65,16 +65,7 @@
 #include "assets/n01.c"
 #include "assets/n03.c"
 #include "assets/n15.c"
-
-/* Littlevgl specific */
-#ifdef LV_LVGL_H_INCLUDE_SIMPLE
-#include "lvgl.h"
-#else
-#include "lvgl/lvgl.h"
-#endif
-
-#define TAG "gui"
-#define LV_TICK_PERIOD_MS 1
+#include "assets/qr_code.c"
 
 #include "lv_font/lv_font.h"
 LV_FONT_DECLARE(lv_font_montserrat_22);
@@ -90,6 +81,19 @@ LV_FONT_DECLARE(mkb_30);
 
 #include "font/mkb_70.c"
 LV_FONT_DECLARE(mkb_70);
+
+#include "font/myfont_3500hz_18.c"
+LV_FONT_DECLARE(myfont_3500hz_18);
+
+/* Littlevgl specific */
+#ifdef LV_LVGL_H_INCLUDE_SIMPLE
+#include "lvgl.h"
+#else
+#include "lvgl/lvgl.h"
+#endif
+
+#define TAG "gui"
+#define LV_TICK_PERIOD_MS 1
 
 /**********************
  *  STATIC PROTOTYPES
@@ -452,7 +456,26 @@ void display(display_type_t type) {
     } else if (type == DISP_LOADING) {
         loading_page();
     } else if (type == DISP_SMART_CONFIG) {
+        lv_obj_t * qr_img = lv_img_create(scr, NULL);
+        lv_obj_align(qr_img, NULL, LV_ALIGN_CENTER, -35, -100);
+        lv_img_set_src(qr_img, &qr_code);
 
+        static lv_style_t sc_style;
+        lv_style_init(&sc_style);	
+        lv_style_set_text_font(&sc_style, LV_STATE_DEFAULT, &myfont_3500hz_18);
+        lv_style_set_text_color(&sc_style, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+
+        lv_obj_t * sc_label = lv_label_create(scr, NULL);
+        lv_label_set_long_mode(sc_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(sc_label, NULL, LV_ALIGN_IN_BOTTOM_MID, -80, -50);
+        lv_obj_add_style(sc_label, LV_LABEL_PART_MAIN, &sc_style);
+        lv_label_set_text(sc_label, "请连接热点: esp32_clock");
+
+        lv_obj_t * tip_label = lv_label_create(scr, NULL);
+        lv_label_set_long_mode(tip_label, LV_LABEL_LONG_EXPAND);
+        lv_obj_align(tip_label, NULL, LV_ALIGN_IN_BOTTOM_MID, -80, -15);
+        lv_obj_add_style(tip_label, LV_LABEL_PART_MAIN, &sc_style);
+        lv_label_set_text(tip_label, "连接后微信扫码二维码");
     }
 }
 

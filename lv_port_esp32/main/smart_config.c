@@ -14,7 +14,7 @@
 #include "storage.h"
 #include "url_encode.c"
 
-#define ESP_WIFI_SSID "esp32_clock_ap"
+#define ESP_WIFI_SSID "esp32_clock"
 #define ESP_WIFI_PASS ""
 
 extern const char root_start[] asm("_binary_root_html_start");
@@ -35,6 +35,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
         wifi_event_ap_stadisconnected_t *event = (wifi_event_ap_stadisconnected_t *)event_data;
         ESP_LOGI(TAG, "station " MACSTR " leave, AID=%d",
                  MAC2STR(event->mac), event->aid);
+    } else {
+        ESP_LOGI(TAG, "event: %s, %d", event_base, event_id);
     }
 }
 

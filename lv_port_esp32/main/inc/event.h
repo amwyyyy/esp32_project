@@ -13,7 +13,9 @@ typedef enum {
     /* 初始化网络时间 */
     EVENT_SNTP_INIT,
     /* 网络时间初始化失败 */
-    EVENT_SINT_FAILURE
+    EVENT_SINT_FAILURE,
+    /* 配网中 */
+    EVENT_SMART_CONFIG
 
 } basic_event_t;
 

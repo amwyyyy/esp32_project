@@ -58,6 +58,10 @@ void connect_wifi() {
     } else {
         ESP_LOGI(TAG, "ssid 配置无效，开始自动配网。");
         start_smart_config();
+
+        vTaskDelay(1000 * 5 / portTICK_PERIOD_MS);
+        // 显示配置界面
+        display(DISP_SMART_CONFIG);
     }
 }
 
@@ -127,9 +131,6 @@ static void event_handle(void *pvParameter) {
                 // 启动更新数据任务
                 xTaskCreate(update_data_task, "update", 1024 * 8, NULL, 1, NULL);
                 break;
-            case EVENT_WIFI_STA_START:
-                set_loading_text("Wifi init...");
-                break;
             case EVENT_WIFI_STA_FAILURE:
                 if (is_init) {
                     set_loading_text("Wifi error...");
@@ -168,9 +169,9 @@ void app_main() {
 
     gui_init();
 
-    connect_wifi();
+    xTaskCreate(event_handle, "event", 1024 * 12, NULL, 1, NULL);
 
-    xTaskCreate(event_handle, "event", 1024 * 16, NULL, 1, NULL);
+    connect_wifi();
 
     ESP_LOGI(TAG, "[APP] Free internal memory: %d kb", esp_get_free_internal_heap_size() / 1024);
     ESP_LOGI(TAG, "[APP] Free all memory: %d kb", esp_get_free_heap_size() / 1024);
