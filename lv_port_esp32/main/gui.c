@@ -146,7 +146,7 @@ void clock_task(lv_task_t * task) {
 }
 
 void wea_task(lv_task_t * task) {
-    if (weather.weather != NULL) {
+    if (weather.temp != NULL) {
         // 计算温度比例，按 50℃ 为 100%
         int temp = strtol(weather.temp, NULL, 10);
         int t = temp * 100 / 50;
@@ -172,7 +172,7 @@ void wea_task(lv_task_t * task) {
         lv_label_set_text_fmt(humidity_label, "%s%",  weather.sd);
         draw_weather_icon(day_or_night, strtol(code, NULL, 10));
         lv_label_set_text(city_label, weather.city);
-        lv_label_set_text(weather_label, weather.weather);
+        lv_label_set_text(weather_label, weather.weather[0]);
         lv_label_set_text_fmt(aqi_label, "%s", level);
 
         lv_draw_rect_dsc_t rect_dsc;
@@ -411,10 +411,10 @@ static void clock_page() {
 
     // 天气状况
     weather_label = lv_label_create(scene_main, NULL);
-    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_BREAK);
+    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_SROLL_CIRC);
     lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 40);
     lv_obj_add_style(weather_label, LV_LABEL_PART_MAIN, &city_style);
-    lv_obj_set_width(weather_label, 120);
+    lv_obj_set_width(weather_label, 125);
     lv_label_set_align(weather_label, LV_LABEL_ALIGN_CENTER);
 
     // 空气质量底框

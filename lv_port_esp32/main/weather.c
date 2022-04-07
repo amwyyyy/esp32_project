@@ -229,7 +229,7 @@ weather_t weather_init(char * city_code) {
         if (s_retry_num >= 3) {
             wea.high = "";
             wea.low = "";
-            wea.weather = "";
+            wea.temp = "";
             return wea;
         }
     }
@@ -251,7 +251,9 @@ weather_t weather_init(char * city_code) {
     cJSON *weatherinfo = cJSON_GetObjectItemCaseSensitive(dz_json, "weatherinfo");
     cJSON *weather = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weather");
     if (cJSON_IsString(weather) && (weather->valuestring != NULL)) {
-        wea.weather = weather->valuestring;
+        char * tq = malloc(sizeof(char) * 16);
+        sprintf(tq, "今日 %s", weather->valuestring);
+        wea.weather[0] = tq;
     }
     cJSON *weathercode = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weathercode");
     if (cJSON_IsString(weathercode) && (weathercode->valuestring != NULL)) {
