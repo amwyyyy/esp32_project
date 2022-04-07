@@ -172,7 +172,7 @@ void wea_task(lv_task_t * task) {
         lv_label_set_text_fmt(humidity_label, "%s%",  weather.sd);
         draw_weather_icon(day_or_night, strtol(code, NULL, 10));
         lv_label_set_text(city_label, weather.city);
-        lv_label_set_text(weather_label, weather.weather[0]);
+        lv_label_set_text(weather_label, weather.weather);
         lv_label_set_text_fmt(aqi_label, "%s", level);
 
         lv_draw_rect_dsc_t rect_dsc;
