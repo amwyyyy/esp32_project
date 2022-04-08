@@ -2,7 +2,7 @@
 #define _weather_h_
 
 typedef struct {
-    char * weather;
+    char * weather[5];
     char * temp;
     char * sd;
     char * weathercode;

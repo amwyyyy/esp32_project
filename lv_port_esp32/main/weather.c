@@ -247,13 +247,11 @@ weather_t weather_init(char * city_code) {
         vTaskDelete(NULL);
     }
 
-    char * weather_info[5];
-
     cJSON *weatherinfo = cJSON_GetObjectItemCaseSensitive(dz_json, "weatherinfo");
     cJSON *weather = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weather");
     if (cJSON_IsString(weather) && (weather->valuestring != NULL)) {
-        weather_info[0] = malloc(sizeof(char) * 32);
-        sprintf(weather_info[0], "今日 %s", weather->valuestring);
+        wea.weather[0] = malloc(sizeof(char) * 32);
+        sprintf(wea.weather[0], "今日 %s", weather->valuestring);
     }
     cJSON *weathercode = cJSON_GetObjectItemCaseSensitive(weatherinfo, "weathercode");
     if (cJSON_IsString(weathercode) && (weathercode->valuestring != NULL)) {
@@ -271,15 +269,15 @@ weather_t weather_init(char * city_code) {
     cJSON *sk_json = cJSON_Parse(sk);
     cJSON *sk_weather = cJSON_GetObjectItemCaseSensitive(sk_json, "weather");
     if (cJSON_IsString(sk_weather) && (sk_weather->valuestring != NULL)) {
-        weather_info[1] = malloc(sizeof(char) * 32);
-        sprintf(weather_info[1], "实时天气 %s", sk_weather->valuestring);
+        wea.weather[1] = malloc(sizeof(char) * 32);
+        sprintf(wea.weather[1], "实时天气 %s", sk_weather->valuestring);
     }
     cJSON *sk_WD = cJSON_GetObjectItemCaseSensitive(sk_json, "WD");
     if (cJSON_IsString(sk_WD) && (sk_WD->valuestring != NULL)) {
         cJSON *sk_WS = cJSON_GetObjectItemCaseSensitive(sk_json, "WS");
         if (cJSON_IsString(sk_WS) && (sk_WS->valuestring != NULL)) {
-            weather_info[2] = malloc(sizeof(char) * 32);
-            sprintf(weather_info[2], "风向 %s %s", sk_WD->valuestring, sk_WS->valuestring);
+            wea.weather[2] = malloc(sizeof(char) * 32);
+            sprintf(wea.weather[2], "风向 %s%s", sk_WD->valuestring, sk_WS->valuestring);
         }   
     }
     cJSON *sk_temp = cJSON_GetObjectItemCaseSensitive(sk_json, "temp");
@@ -301,18 +299,14 @@ weather_t weather_init(char * city_code) {
 
     cJSON *low = cJSON_GetObjectItemCaseSensitive(ff, "fd");
     if (cJSON_IsString(low) && (low->valuestring != NULL)) {
-        weather_info[3] = malloc(sizeof(char) * 32);
-        sprintf(weather_info[3], "最低温度 %s", low->valuestring);
+        wea.weather[3] = malloc(sizeof(char) * 32);
+        sprintf(wea.weather[3], "最低温度 %s", low->valuestring);
     }
     cJSON *high = cJSON_GetObjectItemCaseSensitive(ff, "fc");
     if (cJSON_IsString(high) && (high->valuestring != NULL)) {
-        weather_info[4] = malloc(sizeof(char) * 32);
-        sprintf(weather_info[4], "最高温度 %s", high->valuestring);
+        wea.weather[4] = malloc(sizeof(char) * 32);
+        sprintf(wea.weather[4], "最高温度 %s", high->valuestring);
     }
-
-    char * w = malloc(sizeof(char) * (10 + strlen(weather_info[0]) + strlen(weather_info[1]) + strlen(weather_info[2]) + strlen(weather_info[3]) + strlen(weather_info[4])));
-    sprintf(w, "%s\n%s\n%s\n%s\n%s", weather_info[0], weather_info[1], weather_info[2], weather_info[3], weather_info[4]);
-    wea.weather = w;
 
     ESP_LOGI(TAG, "init weather success.");
 

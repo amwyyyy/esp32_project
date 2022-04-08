@@ -172,7 +172,6 @@ void wea_task(lv_task_t * task) {
         lv_label_set_text_fmt(humidity_label, "%s%",  weather.sd);
         draw_weather_icon(day_or_night, strtol(code, NULL, 10));
         lv_label_set_text(city_label, weather.city);
-        lv_label_set_text(weather_label, weather.weather);
         lv_label_set_text_fmt(aqi_label, "%s", level);
 
         lv_draw_rect_dsc_t rect_dsc;
@@ -181,6 +180,14 @@ void wea_task(lv_task_t * task) {
         rect_dsc.bg_color = lv_color_hex(color);
         rect_dsc.border_width = 0;
         lv_canvas_draw_rect(aqi_canvas, 5, 5, 60, 30, &rect_dsc);
+    }
+}
+
+uint32_t info_index = 0;
+void wea_info_task(lv_task_t * task) {
+    lv_label_set_text(weather_label, weather.weather[info_index++]);
+    if (info_index >= 5) {
+        info_index = 0;
     }
 }
 
@@ -411,10 +418,10 @@ static void clock_page() {
 
     // 天气状况
     weather_label = lv_label_create(scene_main, NULL);
-    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_SROLL_CIRC);
-    lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 20, 40);
+    lv_label_set_long_mode(weather_label, LV_LABEL_LONG_EXPAND);
+    lv_obj_align(weather_label, NULL, LV_ALIGN_IN_TOP_LEFT, 15, 40);
     lv_obj_add_style(weather_label, LV_LABEL_PART_MAIN, &city_style);
-    lv_obj_set_width(weather_label, 125);
+    lv_obj_set_width(weather_label, 120);
     lv_label_set_align(weather_label, LV_LABEL_ALIGN_CENTER);
 
     // 空气质量底框
@@ -445,14 +452,22 @@ void display(display_type_t type) {
         clock_page();
 
         // 刷新任务
+
+        // 每秒刷新时间
         lv_task_t * time_task = lv_task_create(clock_task, 1000, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(time_task);
 
+        // 动画
         lv_task_t * gif_task = lv_task_create(img_task, 80, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(gif_task);
 
+        // 刷新天气
         lv_task_t * weather_task = lv_task_create(wea_task, 1000 * 60 * 5, LV_TASK_PRIO_MID, NULL);
         lv_task_ready(weather_task);
+
+        // 天气信息文本刷新
+        lv_task_t * weather_info_task = lv_task_create(wea_info_task, 1000 * 3, LV_TASK_PRIO_MID, NULL);
+        lv_task_ready(weather_info_task);
     } else if (type == DISP_LOADING) {
         loading_page();
     } else if (type == DISP_SMART_CONFIG) {
