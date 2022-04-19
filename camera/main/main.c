@@ -43,6 +43,11 @@
 #define CAM_PIN_HREF 23
 #define CAM_PIN_PCLK 22
 
+#define PART_BOUNDARY "123456789000000000000987654321"
+static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
+static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
+static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+
 /* A simple example that demonstrates how to create GET and POST
  * handlers for the web server.
  */
@@ -134,7 +139,7 @@ esp_err_t jpg_httpd_handler(httpd_req_t *req){
             res = httpd_resp_send(req, (const char *)fb->buf, fb->len);
         } else {
             jpg_chunking_t jchunk = {req, 0};
-            res = frame2jpg_cb(fb, 80, jpg_encode_stream, &jchunk)?ESP_OK:ESP_FAIL;
+            res = frame2jpg_cb(fb, 80, jpg_encode_stream, &jchunk) ? ESP_OK : ESP_FAIL;
             httpd_resp_send_chunk(req, NULL, 0);
             fb_len = jchunk.len;
         }
@@ -145,129 +150,82 @@ esp_err_t jpg_httpd_handler(httpd_req_t *req){
     return res;
 }
 
-#if CONFIG_EXAMPLE_BASIC_AUTH
-
-typedef struct {
-    char    *username;
-    char    *password;
-} basic_auth_info_t;
-
-#define HTTPD_401      "401 UNAUTHORIZED"           /*!< HTTP Response 401 */
-
-static char *http_auth_basic(const char *username, const char *password)
-{
-    int out;
-    char *user_info = NULL;
-    char *digest = NULL;
-    size_t n = 0;
-    asprintf(&user_info, "%s:%s", username, password);
-    if (!user_info) {
-        ESP_LOGE(TAG, "No enough memory for user information");
-        return NULL;
-    }
-    esp_crypto_base64_encode(NULL, 0, &n, (const unsigned char *)user_info, strlen(user_info));
-
-    /* 6: The length of the "Basic " string
-     * n: Number of bytes for a base64 encode format
-     * 1: Number of bytes for a reserved which be used to fill zero
-    */
-    digest = calloc(1, 6 + n + 1);
-    if (digest) {
-        strcpy(digest, "Basic ");
-        esp_crypto_base64_encode((unsigned char *)digest + 6, n, (size_t *)&out, (const unsigned char *)user_info, strlen(user_info));
-    }
-    free(user_info);
-    return digest;
-}
-
-/* An HTTP GET handler */
-static esp_err_t basic_auth_get_handler(httpd_req_t *req)
-{
-    char *buf = NULL;
-    size_t buf_len = 0;
-    basic_auth_info_t *basic_auth_info = req->user_ctx;
-
-    buf_len = httpd_req_get_hdr_value_len(req, "Authorization") + 1;
-    if (buf_len > 1) {
-        buf = calloc(1, buf_len);
-        if (!buf) {
-            ESP_LOGE(TAG, "No enough memory for basic authorization");
-            return ESP_ERR_NO_MEM;
-        }
-
-        if (httpd_req_get_hdr_value_str(req, "Authorization", buf, buf_len) == ESP_OK) {
-            ESP_LOGI(TAG, "Found header => Authorization: %s", buf);
-        } else {
-            ESP_LOGE(TAG, "No auth value received");
-        }
-
-        char *auth_credentials = http_auth_basic(basic_auth_info->username, basic_auth_info->password);
-        if (!auth_credentials) {
-            ESP_LOGE(TAG, "No enough memory for basic authorization credentials");
-            free(buf);
-            return ESP_ERR_NO_MEM;
-        }
-
-        if (strncmp(auth_credentials, buf, buf_len)) {
-            ESP_LOGE(TAG, "Not authenticated");
-            httpd_resp_set_status(req, HTTPD_401);
-            httpd_resp_set_type(req, "application/json");
-            httpd_resp_set_hdr(req, "Connection", "keep-alive");
-            httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"Hello\"");
-            httpd_resp_send(req, NULL, 0);
-        } else {
-            ESP_LOGI(TAG, "Authenticated!");
-            char *basic_auth_resp = NULL;
-            httpd_resp_set_status(req, HTTPD_200);
-            httpd_resp_set_type(req, "application/json");
-            httpd_resp_set_hdr(req, "Connection", "keep-alive");
-            asprintf(&basic_auth_resp, "{\"authenticated\": true,\"user\": \"%s\"}", basic_auth_info->username);
-            if (!basic_auth_resp) {
-                ESP_LOGE(TAG, "No enough memory for basic authorization response");
-                free(auth_credentials);
-                free(buf);
-                return ESP_ERR_NO_MEM;
-            }
-            httpd_resp_send(req, basic_auth_resp, strlen(basic_auth_resp));
-            free(basic_auth_resp);
-        }
-        free(auth_credentials);
-        free(buf);
-    } else {
-        ESP_LOGE(TAG, "No auth header received");
-        httpd_resp_set_status(req, HTTPD_401);
-        httpd_resp_set_type(req, "application/json");
-        httpd_resp_set_hdr(req, "Connection", "keep-alive");
-        httpd_resp_set_hdr(req, "WWW-Authenticate", "Basic realm=\"Hello\"");
-        httpd_resp_send(req, NULL, 0);
-    }
-
-    return ESP_OK;
-}
-
-static httpd_uri_t basic_auth = {
-    .uri       = "/basic_auth",
-    .method    = HTTP_GET,
-    .handler   = basic_auth_get_handler,
-};
-
-static void httpd_register_basic_auth(httpd_handle_t server)
-{
-    basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
-    if (basic_auth_info) {
-        basic_auth_info->username = CONFIG_EXAMPLE_BASIC_AUTH_USERNAME;
-        basic_auth_info->password = CONFIG_EXAMPLE_BASIC_AUTH_PASSWORD;
-
-        basic_auth.user_ctx = basic_auth_info;
-        httpd_register_uri_handler(server, &basic_auth);
-    }
-}
-#endif
-
-static const httpd_uri_t hello = {
-    .uri       = "/hello",
+static const httpd_uri_t capture = {
+    .uri       = "/capture",
     .method    = HTTP_GET,
     .handler   = jpg_httpd_handler,
+};
+
+esp_err_t jpg_stream_httpd_handler(httpd_req_t *req){
+    camera_fb_t * fb = NULL;
+    esp_err_t res = ESP_OK;
+    size_t _jpg_buf_len;
+    uint8_t * _jpg_buf;
+    char * part_buf[64];
+    static int64_t last_frame = 0;
+    if(!last_frame) {
+        last_frame = esp_timer_get_time();
+    }
+
+    res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
+    if(res != ESP_OK){
+        return res;
+    }
+
+    while(true){
+        fb = esp_camera_fb_get();
+        if (!fb) {
+            ESP_LOGE(TAG, "Camera capture failed");
+            res = ESP_FAIL;
+            break;
+        }
+        if(fb->format != PIXFORMAT_JPEG){
+            bool jpeg_converted = frame2jpg(fb, 80, &_jpg_buf, &_jpg_buf_len);
+            if(!jpeg_converted){
+                ESP_LOGE(TAG, "JPEG compression failed");
+                esp_camera_fb_return(fb);
+                res = ESP_FAIL;
+            }
+        } else {
+            _jpg_buf_len = fb->len;
+            _jpg_buf = fb->buf;
+        }
+
+        if(res == ESP_OK){
+            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+        }
+        if(res == ESP_OK){
+            size_t hlen = snprintf((char *)part_buf, 64, _STREAM_PART, _jpg_buf_len);
+
+            res = httpd_resp_send_chunk(req, (const char *)part_buf, hlen);
+        }
+        if(res == ESP_OK){
+            res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
+        }
+        if(fb->format != PIXFORMAT_JPEG){
+            free(_jpg_buf);
+        }
+        esp_camera_fb_return(fb);
+        if(res != ESP_OK){
+            break;
+        }
+        int64_t fr_end = esp_timer_get_time();
+        int64_t frame_time = fr_end - last_frame;
+        last_frame = fr_end;
+        frame_time /= 1000;
+        ESP_LOGI(TAG, "MJPG: %uKB %ums (%.1ffps)",
+            (uint32_t)(_jpg_buf_len/1024),
+            (uint32_t)frame_time, 1000.0 / (uint32_t)frame_time);
+    }
+
+    last_frame = 0;
+    return res;
+}
+
+static const httpd_uri_t stream = {
+    .uri       = "/stream",
+    .method    = HTTP_GET,
+    .handler   = jpg_stream_httpd_handler,
 };
 
 /* This handler allows the custom error handling functionality to be
@@ -308,10 +266,8 @@ static httpd_handle_t start_webserver(void)
     if (httpd_start(&server, &config) == ESP_OK) {
         // Set URI handlers
         ESP_LOGI(TAG, "Registering URI handlers");
-        httpd_register_uri_handler(server, &hello);
-        #if CONFIG_EXAMPLE_BASIC_AUTH
-        httpd_register_basic_auth(server);
-        #endif
+        httpd_register_uri_handler(server, &capture);
+        httpd_register_uri_handler(server, &stream);
         return server;
     }
 
