@@ -83,7 +83,7 @@ void app_main(void)
     ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
     ESP_ERROR_CHECK(adc1_config_channel_atten(ADC1_EXAMPLE_CHAN0, ADC_EXAMPLE_ATTEN));
     //ADC2 config
-    ESP_ERROR_CHECK(adc2_config_channel_atten(ADC2_EXAMPLE_CHAN0, ADC_EXAMPLE_ATTEN));
+    // ESP_ERROR_CHECK(adc2_config_channel_atten(ADC2_EXAMPLE_CHAN0, ADC_EXAMPLE_ATTEN));
 
     while (1) {
         adc_raw[0][0] = adc1_get_raw(ADC1_EXAMPLE_CHAN0);
@@ -92,6 +92,6 @@ void app_main(void)
             voltage = esp_adc_cal_raw_to_voltage(adc_raw[0][0], &adc1_chars);
             ESP_LOGI(TAG_CH[0][0], "cali data: %d mV", voltage);
         }
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }

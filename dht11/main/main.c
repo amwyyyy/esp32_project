@@ -32,7 +32,7 @@ void dht11_test(void *pvParameters) {
                ?"Timeout"
                :"Bad CRC");
     }
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    vTaskDelay(30000 / portTICK_PERIOD_MS);
   }
 }
 
