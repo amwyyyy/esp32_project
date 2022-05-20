@@ -126,7 +126,7 @@ static void http_rest_with_url(void)
      * If URL as well as host and path parameters are specified, values of host and path will be considered.
      */
     esp_http_client_config_t config = {
-        .host = "172.30.60.158",
+        .host = "172.30.60.185",
         .port = 8088,
         .path = "/test",
         .event_handler = _http_event_handler,
@@ -147,7 +147,7 @@ static void http_rest_with_url(void)
     }
 
     // POST Request
-    esp_http_client_set_url(client, "http://172.30.60.158:8088/test");
+    esp_http_client_set_url(client, "http://172.30.60.185:8088/test");
     esp_http_client_set_method(client, HTTP_METHOD_POST);
     esp_http_client_set_header(client, "Content-Type", "application/json");
 
