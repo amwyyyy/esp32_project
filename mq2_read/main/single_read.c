@@ -95,3 +95,25 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
+
+
+// void adc1task(void* arg)
+// {
+//      adc1_config_width(ADC_WIDTH_12Bit); // 设定捕获宽度
+//      adc1_config_channel_atten(ADC1_TEST_CHANNEL, ADC_ATTEN_11db); // 设定捕获通道
+//      while(1){
+//          printf("The adc1 value: %d\n", adc1_get_voltage(ADC1_TEST_CHANNEL)); // 读取在单个通道上的ADC读数
+//          vTaskDelay(1000/portTICK_PERIOD_MS);
+//      }
+// }
+
+// void read_hc_sr501() {
+//     gpio_reset_pin(HUMAN_GPIO);  // 重置GPIO
+//     gpio_set_level(HUMAN_GPIO, GPIO_MODE_INPUT); // 将GPIO设置为输入模式
+
+//     while (1) {
+//         // 根据GPIO的高低电平判断是否感应到人体活动
+//         ESP_LOGI(TAG, "是否人体活动 %s!", gpio_get_level(HUMAN_GPIO) == 0 ? "无" : "有");
+//         vTaskDelay(2000 / portTICK_PERIOD_MS);
+//     }
+// }

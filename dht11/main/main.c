@@ -15,7 +15,7 @@
 
 static struct dht11_reading stDht11Reading;
 
-void dht11_test(void *pvParameters) {
+void dht11_read(void *pvParameters) {
   DHT11_init(GPIO_NUM_8);
 
   while(1) {
@@ -37,5 +37,5 @@ void dht11_test(void *pvParameters) {
 }
 
 void app_main(void) {
-  xTaskCreate(dht11_test, "dht11_test", configMINIMAL_STACK_SIZE * 3, NULL, 5, NULL);
+  xTaskCreate(dht11_read, "dht11_read", configMINIMAL_STACK_SIZE * 3, NULL, 5, NULL);
 }

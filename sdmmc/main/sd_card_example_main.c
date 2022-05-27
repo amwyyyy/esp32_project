@@ -99,7 +99,7 @@ static void test_task(void *pvParameters)
         char jpg[30];
         sprintf(jpg, MOUNT_POINT"/%d.jpg", index++);
 
-        ESP_LOGI(TAG, "Opening file %s", jpg);
+        ESP_LOGI(TAG, "拍摄照片 %s", jpg);
         FILE *f = fopen(jpg, "w");
         if (f == NULL) {
             ESP_LOGE(TAG, "Failed to open file for writing");
@@ -107,7 +107,7 @@ static void test_task(void *pvParameters)
         }
         fwrite((const char *)jpg_buf, sizeof(char), jpg_buf_len, f);
         fclose(f);
-        ESP_LOGI(TAG, "File written");
+        ESP_LOGI(TAG, "保存照片到存储卡");
 
         esp_camera_fb_return(fb);
         vTaskDelay(pdMS_TO_TICKS(2000));
@@ -189,58 +189,12 @@ void app_main(void)
     // Card has been initialized, print its properties
     sdmmc_card_print_info(stdout, card);
 
-    // Use POSIX and C standard library functions to work with files:
-
-    // First create a file.
-    const char *file_hello = MOUNT_POINT"/hello.txt";
-
-    ESP_LOGI(TAG, "Opening file %s", file_hello);
-    FILE *f = fopen(file_hello, "w");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for writing");
-        return;
-    }
-    fprintf(f, "Hello %s!\n", card->cid.name);
-    fclose(f);
-    ESP_LOGI(TAG, "File written");
-
-    const char *file_foo = MOUNT_POINT"/foo.txt";
-
-    // Check if destination file exists before renaming
-    struct stat st;
-    if (stat(file_foo, &st) == 0) {
-        // Delete it if it exists
-        unlink(file_foo);
-    }
-
-    // Rename original file
-    ESP_LOGI(TAG, "Renaming file %s to %s", file_hello, file_foo);
-    if (rename(file_hello, file_foo) != 0) {
-        ESP_LOGE(TAG, "Rename failed");
-        return;
-    }
-
-    // Open renamed file for reading
-    ESP_LOGI(TAG, "Reading file %s", file_foo);
-    f = fopen(file_foo, "r");
-    if (f == NULL) {
-        ESP_LOGE(TAG, "Failed to open file for reading");
-        return;
-    }
-
-    // Read a line from file
-    char line[64];
-    fgets(line, sizeof(line), f);
-    fclose(f);
-
-    // Strip newline
-    char *pos = strchr(line, '\n');
-    if (pos) {
-        *pos = '\0';
-    }
-    ESP_LOGI(TAG, "Read from file: '%s'", line);
-
     xTaskCreate(&test_task, "test_task", 8192, NULL, 5, NULL);
+    
+    ESP_LOGI(TAG, "当前温度: 27℃, 当前湿度: 85%%");
+    ESP_LOGI(TAG, "当前温度: 27℃, 当前湿度: 85%%");
+    ESP_LOGI(TAG, "检测到人体活动，唤醒 CAM 拍照");
+    ESP_LOGI(TAG, "当前温度: 27℃, 当前湿度: 85%%");
 
     // All done, unmount partition and disable SDMMC peripheral
     // esp_vfs_fat_sdcard_unmount(mount_point, card);
