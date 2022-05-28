@@ -82,7 +82,7 @@ static esp_err_t init_camera()
     return ESP_OK;
 }
 
-static void test_task(void *pvParameters)
+static void camera_task(void *pvParameters)
 {
     camera_fb_t * fb = NULL;
     size_t jpg_buf_len = 0;
@@ -90,22 +90,22 @@ static void test_task(void *pvParameters)
     int index = 0;
 
     while(true) {
-        fb = esp_camera_fb_get();
+        fb = esp_camera_fb_get();  // 调用摄像头拍照
         if (!fb) {
             ESP_LOGE(TAG, "Camera capture failed");
         }
-        frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
+        frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);  // 转换为 jpg 格式
 
         char jpg[30];
         sprintf(jpg, MOUNT_POINT"/%d.jpg", index++);
 
-        ESP_LOGI(TAG, "拍摄照片 %s", jpg);
-        FILE *f = fopen(jpg, "w");
+        ESP_LOGI(TAG, "Opening file %s", jpg);
+        FILE *f = fopen(jpg, "w");  // 在存储卡中创建文件
         if (f == NULL) {
             ESP_LOGE(TAG, "Failed to open file for writing");
             return;
         }
-        fwrite((const char *)jpg_buf, sizeof(char), jpg_buf_len, f);
+        fwrite((const char *)jpg_buf, sizeof(char), jpg_buf_len, f); // 将照片写入存储卡
         fclose(f);
         ESP_LOGI(TAG, "保存照片到存储卡");
 
