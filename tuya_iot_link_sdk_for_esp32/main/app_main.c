@@ -17,6 +17,9 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "protocol_examples_common.h"
+#include "driver/adc.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char *TAG = "TUYA_LINK_EXAMPLE";
 
@@ -31,6 +34,12 @@ tuya_iot_client_t client;
 
 #define SWITCH_DP_ID_KEY "1"
 
+#define HUMAN_GPIO 10
+
+int old_status = 0;
+int human_status = 0;
+int light = 0;
+
 void example_qrcode_print(const char* productkey, const char* uuid)
 {
 	TY_LOGI("https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
@@ -42,42 +51,10 @@ void example_qrcode_print(const char* productkey, const char* uuid)
 	TY_LOGI("(Use this URL to generate a static QR code for the Tuya APP scan code binding)");
 }
 
-/* Hardware switch control function */
-void hardware_switch_set(bool value)
-{
-    if (value == true) {
-        TY_LOGI("Switch ON");
-    } else {
-        TY_LOGI("Switch OFF");
-    }
-}
-
 /* DP data reception processing function */
 void tuya_iot_dp_download(tuya_iot_client_t* client, const char* json_dps)
 {
     TY_LOGD("Data point download value:%s", json_dps);
-
-    /* Parsing json string to cJSON object */
-    cJSON* dps = cJSON_Parse(json_dps);
-    if (dps == NULL) {
-        TY_LOGE("JSON parsing error, exit!");
-        return;
-    }
-
-    /* Process dp data */
-    cJSON* switch_obj = cJSON_GetObjectItem(dps, SWITCH_DP_ID_KEY);
-    if (cJSON_IsTrue(switch_obj)) {
-        hardware_switch_set(true);
-
-    } else if (cJSON_IsFalse(switch_obj)) {
-        hardware_switch_set(false);
-    }
-
-    /* relese cJSON DPS object */
-    cJSON_Delete(dps);
-
-    /* Report the received data to synchronize the switch status. */
-    tuya_iot_dp_report_json(client, json_dps);
 }
 
 /* Tuya SDK event callback */
@@ -103,11 +80,34 @@ static void user_event_handler_on(tuya_iot_client_t* client, tuya_event_msg_t* e
 
 static void status_report_task(void *pvParameters) {
     for(;;) {
-        const char bool_value[] = {"{\"101\":true}"};
-        tuya_iot_dp_report_json(&client, bool_value);
+        if (human_status != old_status) {
+            if (human_status == 1) {
+                if (light > 400) {
+                    const char bool_value[] = {"{\"101\":true}"};
+                    tuya_iot_dp_report_json(&client, bool_value);
+                }
+            } else {
+                if (light < 300) {
+                    const char bool_value[] = {"{\"101\":false}"};
+                    tuya_iot_dp_report_json(&client, bool_value);
+                }
+            }
+            old_status = human_status;
+        }
 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
+}
+
+void adc1task(void* arg)
+{
+     adc1_config_width(ADC_WIDTH_BIT_DEFAULT); // 设定捕获宽度
+     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11); // 设定捕获通道
+     while(1) {
+         light = adc1_get_raw(ADC1_CHANNEL_0);
+         printf("The adc1 value: %d\n", light); // 读取在单个通道上的ADC读数
+         vTaskDelay(pdMS_TO_TICKS(2000));
+     }
 }
 
 static void tuya_link_app_task(void *pvParameters)
@@ -137,6 +137,27 @@ static void tuya_link_app_task(void *pvParameters)
     }
 }
 
+void read_hc_sr501() {
+    gpio_reset_pin(HUMAN_GPIO);  // 重置GPIO
+    gpio_set_direction(HUMAN_GPIO, GPIO_MODE_INPUT); // 将GPIO设置为输入模式
+
+    gpio_reset_pin(19);
+    gpio_set_direction(19, GPIO_MODE_OUTPUT);
+
+    while (1) {
+        // 根据GPIO的高低电平判断是否感应到人体活动
+        human_status = gpio_get_level(HUMAN_GPIO);
+        if (human_status == 1) {
+            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            human_status = gpio_get_level(HUMAN_GPIO);
+        }
+
+        ESP_LOGI(TAG, "是否人体活动 %s!", human_status == 0 ? "无" : "有");
+        gpio_set_level(19, human_status);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -160,4 +181,6 @@ void app_main(void)
     ESP_ERROR_CHECK(example_connect());
 
     xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, 4, NULL);
+    xTaskCreate(read_hc_sr501, "read_hc_sr501", 1024 * 6, NULL, 4, NULL);
+    xTaskCreate(adc1task, "adc1task", 1024 * 6, NULL, 4, NULL);
 }

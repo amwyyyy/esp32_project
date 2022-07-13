@@ -206,6 +206,12 @@ static int client_activate_process(tuya_iot_client_t* client, const char* token)
         return rt;
     }
 
+    /* Send timestamp sync event*/
+    client->event.id = TUYA_EVENT_TIMESTAMP_SYNC;
+    client->event.type = TUYA_DATE_TYPE_INTEGER;
+    client->event.value.asInteger = response.t;
+    iot_dispatch_event(client);
+
     /* Parse activate response json data */
     rt = activate_response_parse(&response);
 
@@ -266,8 +272,8 @@ static void mqtt_service_reset_cmd_on(tuya_protocol_event_t* ev)
     client->event.id = TUYA_EVENT_RESET;
     client->event.type = TUYA_DATE_TYPE_INTEGER;
 
-    if (cJSON_GetObjectItem(data, "type") && \
-        strcmp(cJSON_GetObjectItem(data, "type")->valuestring, "reset_factory") == 0)  {
+    if (cJSON_GetObjectItem(ev->root_json, "type") && \
+        strcmp(cJSON_GetObjectItem(ev->root_json, "type")->valuestring, "reset_factory") == 0)  {
         TY_LOGD("cmd is reset factory, ungister");
         client->event.value.asInteger = TUYA_RESET_TYPE_REMOTE_FACTORY;
     } else {
@@ -284,17 +290,17 @@ static void mqtt_atop_upgrade_info_notify_cb(atop_base_response_t* response, voi
 {
     tuya_iot_client_t* client = (tuya_iot_client_t*)user_data;
 
-    /* Send timestamp sync event*/
-    client->event.id = TUYA_EVENT_TIMESTAMP_SYNC;
-    client->event.type = TUYA_DATE_TYPE_INTEGER;
-    client->event.value.asInteger = response->t;
-    iot_dispatch_event(client);
-
     /* response error, abort upgrade */
     if (response->success == false) {
         matop_service_upgrade_status_update(&client->matop, 0, 4);
         return;
     }
+
+    /* Send timestamp sync event*/
+    client->event.id = TUYA_EVENT_TIMESTAMP_SYNC;
+    client->event.type = TUYA_DATE_TYPE_INTEGER;
+    client->event.value.asInteger = response->t;
+    iot_dispatch_event(client);
 
     /* Param verify */
     if (response->result == NULL) {
@@ -337,7 +343,7 @@ static void mqtt_client_connected_on(void* context, void* user_data)
     });
 
     /* Auto check upgrade timer start */
-    MultiTimerStart(&client->check_upgrade_timer, 1000 * 15);
+    MultiTimerStart(&client->check_upgrade_timer, 1000 * 1);
 
     /* Send connected event*/
     client->event.id = TUYA_EVENT_MQTT_CONNECTED;
@@ -726,13 +732,14 @@ int tuya_iot_activated_data_remove(tuya_iot_client_t* client)
     return OPRT_OK;
 }
 
-int tuya_iot_dp_report_json_with_time(tuya_iot_client_t* client, const char* dps, const char* time)
+static int tuya_iot_dp_report_json_common(tuya_iot_client_t* client, const char* dps, const char* time, tuya_dp_notify_cb_t cb, void* user_data, int timeout_ms, bool async)
 {
     if (client == NULL || dps == NULL) {
         TY_LOGE("param error");
         return OPRT_INVALID_PARM;
     }
 
+    int ret;
     int printlen = 0;
     char* buffer = NULL;
 
@@ -748,14 +755,27 @@ int tuya_iot_dp_report_json_with_time(tuya_iot_client_t* client, const char* dps
     }
 
     /* Report buffer */
-    uint16_t mgsid = tuya_mqtt_protocol_data_publish(&client->mqctx, PRO_DATA_PUSH, (uint8_t*)buffer, printlen);
+    ret = tuya_mqtt_protocol_data_publish_common(&client->mqctx, PRO_DATA_PUSH,
+                                                (const uint8_t*)buffer, (uint16_t)printlen,
+                                                (mqtt_publish_notify_cb_t)cb, user_data,
+                                                timeout_ms, async);
     system_free(buffer);
+    return ret;
+}
 
-    if (mgsid <= 0) {
-        return OPRT_SEND_ERR;
-    }
+int tuya_iot_dp_report_json_async(tuya_iot_client_t* client, const char* dps, const char* time, tuya_dp_notify_cb_t cb, void* user_data, int timeout_ms)
+{
+    return tuya_iot_dp_report_json_common(client, dps, time, cb, user_data, timeout_ms, true);
+}
 
-    return OPRT_OK;
+int tuya_iot_dp_report_json_with_notify(tuya_iot_client_t* client, const char* dps, const char* time, tuya_dp_notify_cb_t cb, void* user_data, int timeout_ms)
+{
+    return tuya_iot_dp_report_json_common(client, dps, time, cb, user_data, timeout_ms, false);
+}
+
+int tuya_iot_dp_report_json_with_time(tuya_iot_client_t* client, const char* dps, const char* time)
+{
+    return tuya_iot_dp_report_json_common(client, dps, time, NULL, NULL, 0, false);
 }
 
 int tuya_iot_dp_report_json(tuya_iot_client_t* client, const char* dps)

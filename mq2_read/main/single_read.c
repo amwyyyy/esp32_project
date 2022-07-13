@@ -20,100 +20,38 @@
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
 
-
-//ADC Channels
-#if CONFIG_IDF_TARGET_ESP32
-#define ADC1_EXAMPLE_CHAN0          ADC1_CHANNEL_6
-#define ADC2_EXAMPLE_CHAN0          ADC2_CHANNEL_0
-static const char *TAG_CH[2][10] = {{"ADC1_CH6"}, {"ADC2_CH0"}};
-#else
-#define ADC1_EXAMPLE_CHAN0          ADC1_CHANNEL_0
-static const char *TAG_CH[1][10] = {{"ADC1_CH0"}};
-#endif
-
-//ADC Attenuation
-#define ADC_EXAMPLE_ATTEN           ADC_ATTEN_DB_11
-
-//ADC Calibration
-#if CONFIG_IDF_TARGET_ESP32
-#define ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_VREF
-#elif CONFIG_IDF_TARGET_ESP32S2
-#define ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_TP
-#elif CONFIG_IDF_TARGET_ESP32C3
-#define ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_TP
-#elif CONFIG_IDF_TARGET_ESP32S3
-#define ADC_EXAMPLE_CALI_SCHEME     ESP_ADC_CAL_VAL_EFUSE_TP_FIT
-#endif
-
-
-static int adc_raw[2][10];
 static const char *TAG = "ADC SINGLE";
 
-static esp_adc_cal_characteristics_t adc1_chars;
-static esp_adc_cal_characteristics_t adc2_chars;
+#define HUMAN_GPIO 10
 
-static bool adc_calibration_init(void)
+void adc1task(void* arg)
 {
-    esp_err_t ret;
-    bool cali_enable = false;
+     adc1_config_width(ADC_WIDTH_BIT_DEFAULT); // 设定捕获宽度
+     adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11); // 设定捕获通道
+     while(1){
+         printf("The adc1 value: %d\n", adc1_get_raw(ADC1_CHANNEL_0)); // 读取在单个通道上的ADC读数
+         vTaskDelay(1000 / portTICK_PERIOD_MS);
+     }
+}
 
-    ret = esp_adc_cal_check_efuse(ADC_EXAMPLE_CALI_SCHEME);
-    if (ret == ESP_ERR_NOT_SUPPORTED) {
-        ESP_LOGW(TAG, "Calibration scheme not supported, skip software calibration");
-    } else if (ret == ESP_ERR_INVALID_VERSION) {
-        ESP_LOGW(TAG, "eFuse not burnt, skip software calibration");
-    } else if (ret == ESP_OK) {
-        cali_enable = true;
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_EXAMPLE_ATTEN, ADC_WIDTH_BIT_DEFAULT, 0, &adc1_chars);
-        esp_adc_cal_characterize(ADC_UNIT_2, ADC_EXAMPLE_ATTEN, ADC_WIDTH_BIT_DEFAULT, 0, &adc2_chars);
-    } else {
-        ESP_LOGE(TAG, "Invalid arg");
+void read_hc_sr501() {
+    gpio_reset_pin(HUMAN_GPIO);  // 重置GPIO
+    gpio_set_direction(HUMAN_GPIO, GPIO_MODE_INPUT); // 将GPIO设置为输入模式
+
+    gpio_reset_pin(19);
+    gpio_set_direction(19, GPIO_MODE_OUTPUT);
+
+    while (1) {
+        // 根据GPIO的高低电平判断是否感应到人体活动
+        int status = gpio_get_level(HUMAN_GPIO);
+        ESP_LOGI(TAG, "是否人体活动 %s!", status == 0 ? "无" : "有");
+        gpio_set_level(19, status);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-
-    return cali_enable;
 }
 
 void app_main(void)
 {
-    esp_err_t ret = ESP_OK;
-    uint32_t voltage = 0;
-    bool cali_enable = adc_calibration_init();
-
-    //ADC1 config
-    ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
-    ESP_ERROR_CHECK(adc1_config_channel_atten(ADC1_EXAMPLE_CHAN0, ADC_EXAMPLE_ATTEN));
-    //ADC2 config
-    // ESP_ERROR_CHECK(adc2_config_channel_atten(ADC2_EXAMPLE_CHAN0, ADC_EXAMPLE_ATTEN));
-
-    while (1) {
-        adc_raw[0][0] = adc1_get_raw(ADC1_EXAMPLE_CHAN0);
-        ESP_LOGI(TAG_CH[0][0], "raw  data: %d", adc_raw[0][0]);
-        if (cali_enable) {
-            voltage = esp_adc_cal_raw_to_voltage(adc_raw[0][0], &adc1_chars);
-            ESP_LOGI(TAG_CH[0][0], "cali data: %d mV", voltage);
-        }
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
+    xTaskCreate(adc1task, "test_task", 8192, NULL, 5, NULL);
+    xTaskCreate(read_hc_sr501, "read_hc_sr501", 8192, NULL, 5, NULL);
 }
-
-
-// void adc1task(void* arg)
-// {
-//      adc1_config_width(ADC_WIDTH_12Bit); // 设定捕获宽度
-//      adc1_config_channel_atten(ADC1_TEST_CHANNEL, ADC_ATTEN_11db); // 设定捕获通道
-//      while(1){
-//          printf("The adc1 value: %d\n", adc1_get_voltage(ADC1_TEST_CHANNEL)); // 读取在单个通道上的ADC读数
-//          vTaskDelay(1000/portTICK_PERIOD_MS);
-//      }
-// }
-
-// void read_hc_sr501() {
-//     gpio_reset_pin(HUMAN_GPIO);  // 重置GPIO
-//     gpio_set_level(HUMAN_GPIO, GPIO_MODE_INPUT); // 将GPIO设置为输入模式
-
-//     while (1) {
-//         // 根据GPIO的高低电平判断是否感应到人体活动
-//         ESP_LOGI(TAG, "是否人体活动 %s!", gpio_get_level(HUMAN_GPIO) == 0 ? "无" : "有");
-//         vTaskDelay(2000 / portTICK_PERIOD_MS);
-//     }
-// }
